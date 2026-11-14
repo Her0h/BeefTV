@@ -56,7 +56,7 @@ type MediaReference struct {
 // both projections and should prefer request.output for new plugins.
 type OutputOptions struct {
 	Count         int            `json:"count,omitempty"`
-	Duration      int            `json:"duration,omitempty"`
+	Duration      float64        `json:"duration,omitempty"`
 	AspectRatio   string         `json:"aspectRatio,omitempty"`
 	Width         int            `json:"width,omitempty"`
 	Height        int            `json:"height,omitempty"`
@@ -86,7 +86,7 @@ type GenerationRequest struct {
 	Images          []MediaReference          `json:"images,omitempty"`
 	Videos          []MediaReference          `json:"videos,omitempty"`
 	Audios          []MediaReference          `json:"audios,omitempty"`
-	Duration        int                       `json:"duration,omitempty"`
+	Duration        float64                   `json:"duration,omitempty"`
 	AspectRatio     string                    `json:"aspectRatio,omitempty"`
 	Resolution      string                    `json:"resolution,omitempty"`
 	Quality         string                    `json:"quality,omitempty"`
@@ -162,28 +162,29 @@ type Parameter struct {
 	Required    bool     `json:"required,omitempty"`
 	Description string   `json:"description,omitempty"`
 	Values      []string `json:"values,omitempty"`
-	Min         *int     `json:"min,omitempty"`
-	Max         *int     `json:"max,omitempty"`
+	Min         *float64 `json:"min,omitempty"`
+	Max         *float64 `json:"max,omitempty"`
+	Step        *float64 `json:"step,omitempty"`
 	Mapping     string   `json:"mapping,omitempty"`
 }
 
 type Metadata struct {
-	ID                      string            `json:"id"`
-	Version                 string            `json:"version"`
-	Name                    string            `json:"name"`
-	Vendor                  string            `json:"vendor"`
-	Description             string            `json:"description,omitempty"`
-	Categories              []Capability      `json:"categories"`
-	Scopes                  []Surface         `json:"scopes"`
-	Parameters              []Parameter       `json:"parameters,omitempty"`
-	Create                  string            `json:"-"`
-	Poll                    string            `json:"-"`
-	Cancel                  string            `json:"-"`
-	ContentType             string            `json:"-"`
-	Documentation           string            `json:"documentation,omitempty"`
-	LegacyAliases           []string          `json:"-"`
-	Enabled                 bool              `json:"enabled"`
-	Installable             bool              `json:"installable"`
+	ID                      string               `json:"id"`
+	Version                 string               `json:"version"`
+	Name                    string               `json:"name"`
+	Vendor                  string               `json:"vendor"`
+	Description             string               `json:"description,omitempty"`
+	Categories              []Capability         `json:"categories"`
+	Scopes                  []Surface            `json:"scopes"`
+	Parameters              []Parameter          `json:"parameters,omitempty"`
+	Create                  string               `json:"-"`
+	Poll                    string               `json:"-"`
+	Cancel                  string               `json:"-"`
+	ContentType             string               `json:"-"`
+	Documentation           string               `json:"documentation,omitempty"`
+	LegacyAliases           []string             `json:"-"`
+	Enabled                 bool                 `json:"enabled"`
+	Installable             bool                 `json:"installable"`
 	Execution               string               `json:"-"`
 	BaseURL                 string               `json:"-"`
 	RequiresPublicMediaURLs bool                 `json:"-"`

@@ -113,12 +113,12 @@ func seedanceMaterialLibraryHost(baseURL string) bool {
 // 输出时长下限官方是 4 秒：2.0 为 4~15，2.5 为 4~30。
 // 区间、连续（fractionalMin）和枚举三种已保存配置都要收紧，枚举里的 -1（自动）保留。
 func tightenSeedanceOutputDuration(duration *VideoDurationConfig) {
-	minimum := documentedSeedanceOutputMinSeconds
+	minimum := float64(documentedSeedanceOutputMinSeconds)
 	if duration == nil {
 		return
 	}
 	if duration.Selection == "enum" {
-		values := make([]int, 0, len(duration.Values))
+		values := make([]float64, 0, len(duration.Values))
 		for _, seconds := range duration.Values {
 			if seconds != -1 && seconds < minimum {
 				continue
@@ -131,7 +131,7 @@ func tightenSeedanceOutputDuration(duration *VideoDurationConfig) {
 		if len(values) == 0 {
 			return
 		}
-		if duration.Default == -1 && containsInt(values, -1) || containsInt(values, duration.Default) {
+		if duration.Default == -1 && containsDuration(values, -1) || containsDuration(values, duration.Default) {
 			return
 		}
 		duration.Default = values[0]

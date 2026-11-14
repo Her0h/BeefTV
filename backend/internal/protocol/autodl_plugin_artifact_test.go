@@ -51,7 +51,7 @@ func TestAutoDLPluginArtifact(t *testing.T) {
 		t.Fatalf("create spec = %#v", create)
 	}
 	body, ok := create.Body.(map[string]any)
-	if !ok || body["prompt"] != "a cinematic test" || body["duration"] != 3 || body["resolution"] != "768p竖" {
+	if !ok || body["prompt"] != "a cinematic test" || body["duration"] != float64(3) || body["resolution"] != "768p竖" {
 		t.Fatalf("create body = %#v", create.Body)
 	}
 	if _, exists := body["ref_image_0"]; exists {
@@ -98,7 +98,7 @@ func TestAutoDLPluginArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 	bodyImageAudio := createImageAudio.Body.(map[string]any)
-	if bodyImageAudio["ref_image_0"] != "https://cdn.example/face.png" || bodyImageAudio["ref_audio_0"] != "https://cdn.example/voice.mp3" || bodyImageAudio["audio_duration"] != 5 || bodyImageAudio["resolution"] != "768p横" {
+	if bodyImageAudio["ref_image_0"] != "https://cdn.example/face.png" || bodyImageAudio["ref_audio_0"] != "https://cdn.example/voice.mp3" || bodyImageAudio["audio_duration"] != float64(5) || bodyImageAudio["resolution"] != "768p横" {
 		t.Fatalf("image_audio body = %#v", bodyImageAudio)
 	}
 	if _, exists := bodyImageAudio["prompt"]; exists {
@@ -123,7 +123,7 @@ func TestAutoDLPluginArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 	bodyV2 := createAudioToVideoV2.Body.(map[string]any)
-	if bodyV2["prompt"] != "cinematic sync" || bodyV2["duration"] != 8 || bodyV2["resolution"] != "1080p横" ||
+	if bodyV2["prompt"] != "cinematic sync" || bodyV2["duration"] != float64(8) || bodyV2["resolution"] != "1080p横" ||
 		bodyV2["ref_image_0"] != "https://cdn.example/img0.png" || bodyV2["ref_image_1"] != "https://cdn.example/img1.png" ||
 		bodyV2["ref_audio_0"] != "https://cdn.example/aud0.mp3" || bodyV2["ref_audio_1"] != "https://cdn.example/aud1.mp3" {
 		t.Fatalf("v2 body = %#v", bodyV2)
@@ -140,7 +140,7 @@ func TestAutoDLPluginArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 	bodyB99001 := createB99001.Body.(map[string]any)
-	if bodyB99001["prompt"] != "a prompt test" || bodyB99001["duration"] != 5 || bodyB99001["resolution"] != "736p竖" {
+	if bodyB99001["prompt"] != "a prompt test" || bodyB99001["duration"] != float64(5) || bodyB99001["resolution"] != "736p竖" {
 		t.Fatalf("b99_001 body = %#v", bodyB99001)
 	}
 	if _, exists := bodyB99001["ref_image_0"]; exists {
@@ -158,7 +158,7 @@ func TestAutoDLPluginArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 	bodyB99002 := createB99002.Body.(map[string]any)
-	if bodyB99002["prompt"] != "first to last" || bodyB99002["duration"] != 6 || bodyB99002["resolution"] != "736p横" ||
+	if bodyB99002["prompt"] != "first to last" || bodyB99002["duration"] != float64(6) || bodyB99002["resolution"] != "736p横" ||
 		bodyB99002["first_frame"] != "https://cdn.example/f0.png" || bodyB99002["last_frame"] != "https://cdn.example/f1.png" {
 		t.Fatalf("b99_002 body = %#v", bodyB99002)
 	}
@@ -174,7 +174,7 @@ func TestAutoDLPluginArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 	bodyB99003 := createB99003.Body.(map[string]any)
-	if bodyB99003["prompt"] != "multi image 12s" || bodyB99003["duration"] != 12 || bodyB99003["resolution"] != "736p(1:1)" ||
+	if bodyB99003["prompt"] != "multi image 12s" || bodyB99003["duration"] != float64(12) || bodyB99003["resolution"] != "736p(1:1)" ||
 		bodyB99003["ref_image_0"] != "https://cdn.example/img0.png" || bodyB99003["ref_image_1"] != "https://cdn.example/img1.png" {
 		t.Fatalf("b99_003 body = %#v", bodyB99003)
 	}

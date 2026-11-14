@@ -88,9 +88,6 @@ func RequestProviderCancellation(ctx context.Context, repo *repository.Repositor
 	}
 	isUpscaleTask := input.Upscale != nil || task.IsUpscale() || UpscaleMediaType(input.Config.Model) != ""
 	isSubtitleEraseTask := input.SubtitleErase != nil || task.IsSubtitleErase() || input.Config.Model == SubtitleEraseModelName
-	if !SupportsProviderCancellation(input.Config.InterfaceType) && !isUpscaleTask && !isSubtitleEraseTask {
-		return MarkProviderCancellationUncertain(repo, task, providerCancellationUncertainMessage("当前上游协议不支持取消"), logTask)
-	}
 	requestCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancel()
 	requestTask := *task
@@ -100,6 +97,9 @@ func RequestProviderCancellation(ctx context.Context, repo *repository.Repositor
 		requestCtx = bindTaskCtx(requestCtx, requestTask)
 	}
 	requestCtx = WithProviderRequestKind(requestCtx, "cancel")
+	if !SupportsProviderCancellationForContext(requestCtx, input.Config.InterfaceType) && !isUpscaleTask && !isSubtitleEraseTask {
+		return MarkProviderCancellationUncertain(repo, task, providerCancellationUncertainMessage("当前上游协议不支持取消"), logTask)
+	}
 
 	cancelTargetID := strings.TrimSpace(task.ProviderRequestID)
 	if taskRef, managed := managedEnvelopeTaskRef(repo, task); managed && (isSubtitleEraseTask || isUpscaleTask) {
@@ -284,16 +284,15 @@ func ProviderCancellationInput(task *model.Task, decryptInput func(string) (stri
 	return input, nil
 }
 
-func SupportsProviderCancellation(interfaceType string) bool {
-	return interfaceType == string(model.ChannelInterfaceGeminiVeo) || model.IsVolcengineArkVideoProtocol(model.ChannelInterfaceType(interfaceType))
-}
-
 func CancelProviderTask(ctx context.Context, config Config, providerRequestID string) error {
 	if config.Model == SubtitleEraseModelName {
 		return CancelSubtitleErase(ctx, config, providerRequestID)
 	}
 	if UpscaleMediaType(config.Model) != "" {
 		return CancelUpscale(ctx, config, providerRequestID)
+	}
+	if adapter, ok := cancellableProtocolAdapter(ctx, config.InterfaceType); ok {
+		return cancelProtocolProviderTask(ctx, config, providerRequestID, adapter)
 	}
 	switch {
 	case config.InterfaceType == string(model.ChannelInterfaceGeminiVeo):
@@ -351,6 +350,9 @@ func QueryProviderCancellation(ctx context.Context, config Config, providerReque
 			return "", "", err
 		}
 		return classifyManagedStatusCancellation(status), status, nil
+	}
+	if adapter, ok := cancellableProtocolAdapter(ctx, config.InterfaceType); ok {
+		return queryProtocolProviderCancellation(ctx, config, providerRequestID, adapter)
 	}
 	switch {
 	case config.InterfaceType == string(model.ChannelInterfaceGeminiVeo):

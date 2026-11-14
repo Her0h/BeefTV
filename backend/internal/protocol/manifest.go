@@ -472,6 +472,9 @@ func (a manifestAdapter) AgentAvailable() bool {
 	return a.manifest.Agent != nil && a.manifest.AgentResponse != nil
 }
 func (a manifestAdapter) ResultAvailable() bool { return a.manifest.ResultOperation != nil }
+func (a manifestAdapter) CancelAvailable() bool {
+	return a.manifest.Cancel != nil && a.manifest.Poll != nil
+}
 func (a manifestAdapter) BuildCreate(_ context.Context, c RequestContext) (RequestSpec, error) {
 	c.Request = applyManifestTaskOptions(a.manifest.Metadata.ID, c.Request)
 	if len(a.manifest.Contributes.Providers) == 0 {
@@ -1543,4 +1546,3 @@ func reflectValueIsZero(value any) bool {
 		return false
 	}
 }
-

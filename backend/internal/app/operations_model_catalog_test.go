@@ -76,7 +76,7 @@ func TestAgentModelCatalogBeefTVVideoContractAndAudioPayload(t *testing.T) {
 				t.Fatalf("does not match generation contract: %#v", video)
 			}
 			for _, audio := range []bool{video.GenerateAudio.Default, true, false} {
-				payload, err := generation.BeefTVVideoRequestBody(generation.Input{Mode: "video", Prompt: "synthetic scene", Config: generation.Config{Model: "kling-video-v3", VideoSeconds: strconv.Itoa(video.Duration.Default), VQuality: video.DefaultResolution, Size: video.DefaultRatio, VideoGenerateAudio: strconv.FormatBool(audio)}})
+				payload, err := generation.BeefTVVideoRequestBody(generation.Input{Mode: "video", Prompt: "synthetic scene", Config: generation.Config{Model: "kling-video-v3", VideoSeconds: strconv.FormatFloat(video.Duration.Default, 'f', -1, 64), VQuality: video.DefaultResolution, Size: video.DefaultRatio, VideoGenerateAudio: strconv.FormatBool(audio)}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -187,7 +187,7 @@ func TestAgentModelCatalogPreservesDesktopGenerationProfiles(t *testing.T) {
 	video := modelcatalog.DefaultModelCapabilityConfigForModel("new-api-channel-2", "seedance-2.0-fast")
 	video.Video.Resolutions = []string{"480p", "720p"}
 	video.Video.DefaultResolution = "480p"
-	video.Video.Duration = modelcatalog.VideoDurationConfig{Selection: "enum", Values: []int{5, 10}, Default: 5}
+	video.Video.Duration = modelcatalog.VideoDurationConfig{Selection: "enum", Values: []float64{5, 10}, Default: 5}
 	video.Video.References.MaxImages = 9
 	video.Video.References.MaxVideos = 3
 	image := modelcatalog.DefaultModelCapabilityConfigForModel("openai-image", "gpt-image-2.5")

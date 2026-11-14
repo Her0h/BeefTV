@@ -73,6 +73,9 @@ func manifestWorkflowValues(manifest Manifest, request GenerationRequest) map[st
 			if param.Max != nil {
 				entry["max"] = *param.Max
 			}
+			if param.Step != nil {
+				entry["step"] = *param.Step
+			}
 			params = append(params, entry)
 			if name := strings.TrimSpace(param.Name); name != "" {
 				values[name] = paramValues

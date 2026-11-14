@@ -31,10 +31,10 @@ func defaultVideoCapabilityConfig(protocol string, modelName string) *VideoCapab
 	}
 	switch model.ChannelInterfaceType(protocol) {
 	case model.ChannelInterfaceVolcengineJiMengVideo:
-		video.Duration = VideoDurationConfig{Selection: "enum", Values: []int{5, 10}, Default: 5}
+		video.Duration = VideoDurationConfig{Selection: "enum", Values: []float64{5, 10}, Default: 5}
 		video.Resolutions = []string{"720p"}
 	case model.ChannelInterfaceGeminiVeo:
-		video.Duration = VideoDurationConfig{Selection: "enum", Values: []int{4, 6, 8}, Default: 6}
+		video.Duration = VideoDurationConfig{Selection: "enum", Values: []float64{4, 6, 8}, Default: 6}
 		video.Resolutions = []string{"720p", "1080p"}
 	case model.ChannelInterfaceVolcengineArkVideo, model.ChannelInterfaceVolcengineArkAgentPlanVideo:
 		video.Operations = append(video.Operations, "reference_to_video")
@@ -63,7 +63,7 @@ func defaultVideoCapabilityConfig(protocol string, modelName string) *VideoCapab
 		video.GenerateAudio = VideoBooleanConfig{Supported: false, Default: false}
 	case model.ChannelInterfaceNovitaVideo:
 		video.References.MaxImages, video.References.MaxImageBytes = 1, 10*1024*1024
-		video.Duration = VideoDurationConfig{Selection: "enum", Values: []int{5, 10}, Default: 5}
+		video.Duration = VideoDurationConfig{Selection: "enum", Values: []float64{5, 10}, Default: 5}
 		video.Ratios = []string{"16:9", "9:16", "1:1"}
 		video.Resolutions = []string{"1080p"}
 		video.DefaultResolution = "1080p"
@@ -77,7 +77,7 @@ func defaultVideoCapabilityConfig(protocol string, modelName string) *VideoCapab
 		video.References.MaxAudios = 3
 		video.References.MaxAudioBytes = 15 * 1024 * 1024
 		video.References.MaxAudioDuration = 15
-		video.Duration = VideoDurationConfig{Selection: "enum", Values: []int{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Default: 5}
+		video.Duration = VideoDurationConfig{Selection: "enum", Values: []float64{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, Default: 5}
 		video.Ratios = []string{"adaptive", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"}
 		video.DefaultRatio = "16:9"
 		video.Resolutions = []string{"768P", "2K"}
@@ -189,8 +189,8 @@ func defaultVideoCapabilityConfig(protocol string, modelName string) *VideoCapab
 	if isNativeDreaminaSeedance(protocol, modelName) || (model.IsVolcengineArkVideoProtocol(model.ChannelInterfaceType(protocol)) && isSeedance25Model(modelName)) {
 		video.Duration.Selection = "enum"
 		video.Duration.Min = 4
-		video.Duration.Values = []int{-1}
-		for seconds := 4; seconds <= video.Duration.Max; seconds++ {
+		video.Duration.Values = []float64{-1}
+		for seconds := 4.0; seconds <= video.Duration.Max; seconds++ {
 			video.Duration.Values = append(video.Duration.Values, seconds)
 		}
 		video.Ratios = appendUniqueString(video.Ratios, "adaptive")
@@ -340,21 +340,21 @@ func validateVideoDuration(value VideoDurationConfig) error {
 		if math.IsNaN(value.FractionalMin) || math.IsInf(value.FractionalMin, 0) || value.FractionalMin != 0 && (!value.Continuous || value.FractionalMin < .92 || value.FractionalMin > float64(value.Min)) {
 			return kernel.BadAuthRequest("视频小数时长范围无效")
 		}
-		if value.Min < 1 || value.Max < value.Min || value.Max > 3600 || value.Step < 1 || value.Default < value.Min || value.Default > value.Max || !value.Continuous && (value.Default-value.Min)%value.Step != 0 {
+		if !finiteDuration(value.Min) || !finiteDuration(value.Max) || !finiteDuration(value.Step) || !finiteDuration(value.Default) || value.Min < 1 || value.Max < value.Min || value.Max > 3600 || value.Step <= 0 || value.Default < value.Min || value.Default > value.Max || !value.Continuous && !durationOnGrid(value.Default, value.Min, value.Step) {
 			return kernel.BadAuthRequest("视频时长范围或默认值无效")
 		}
 	case "enum":
 		if len(value.Values) == 0 || len(value.Values) > 100 {
 			return kernel.BadAuthRequest("视频固定时长至少需要一个选项")
 		}
-		values := append([]int(nil), value.Values...)
-		sort.Ints(values)
+		values := append([]float64(nil), value.Values...)
+		sort.Float64s(values)
 		for index, item := range values {
-			if (item < 1 && item != -1) || item > 3600 || (index > 0 && values[index-1] == item) {
+			if !finiteDuration(item) || (item < 1 && item != -1) || item > 3600 || (index > 0 && values[index-1] == item) {
 				return kernel.BadAuthRequest("视频固定时长选项无效或重复")
 			}
 		}
-		if !containsInt(values, value.Default) {
+		if !containsDuration(values, value.Default) {
 			return kernel.BadAuthRequest("视频默认时长必须属于固定时长选项")
 		}
 	default:
@@ -445,8 +445,8 @@ func validateVideoTaskParameters(profile *VideoCapabilityConfig, input TaskInput
 	if err == nil && !math.IsNaN(seconds) && !math.IsInf(seconds, 0) {
 		if profile.Duration.Continuous {
 			allowed = seconds >= durationMinimum(profile.Duration) && seconds <= float64(profile.Duration.Max)
-		} else if seconds == math.Trunc(seconds) {
-			allowed = videoDurationAllowed(profile.Duration, int(seconds))
+		} else {
+			allowed = videoDurationAllowed(profile.Duration, seconds)
 		}
 	}
 	if !allowed && videoDurationSupported(profile) {
@@ -471,14 +471,33 @@ func validateVideoTaskParameters(profile *VideoCapabilityConfig, input TaskInput
 	return nil
 }
 
-func videoDurationAllowed(value VideoDurationConfig, seconds int) bool {
+func videoDurationAllowed(value VideoDurationConfig, seconds float64) bool {
 	if seconds == -1 {
-		return containsInt(value.Values, -1)
+		return containsDuration(value.Values, -1)
 	}
 	if value.Selection == "enum" {
-		return containsInt(value.Values, seconds)
+		return containsDuration(value.Values, seconds)
 	}
-	return float64(seconds) >= durationMinimum(value) && seconds <= value.Max && (value.Continuous || value.Step > 0 && (seconds-value.Min)%value.Step == 0)
+	return finiteDuration(seconds) && seconds >= durationMinimum(value) && seconds <= value.Max && (value.Continuous || durationOnGrid(seconds, value.Min, value.Step))
+}
+
+func finiteDuration(value float64) bool { return !math.IsNaN(value) && !math.IsInf(value, 0) }
+
+func durationOnGrid(value, minimum, step float64) bool {
+	if !finiteDuration(value) || !finiteDuration(minimum) || !finiteDuration(step) || step <= 0 {
+		return false
+	}
+	units := (value - minimum) / step
+	return math.Abs(units-math.Round(units)) <= 1e-8
+}
+
+func containsDuration(values []float64, seconds float64) bool {
+	for _, value := range values {
+		if math.Abs(value-seconds) <= 1e-8 {
+			return true
+		}
+	}
+	return false
 }
 
 func durationMinimum(value VideoDurationConfig) float64 {
@@ -499,7 +518,7 @@ func videoDurationRequirement(value VideoDurationConfig) string {
 				parts = append(parts, "自动")
 				continue
 			}
-			manual = append(manual, strconv.Itoa(seconds))
+			manual = append(manual, strconv.FormatFloat(seconds, 'f', -1, 64))
 		}
 		if len(manual) > 0 {
 			parts = append(parts, strings.Join(manual, "、")+" 秒")

@@ -77,7 +77,7 @@ func TestCapabilityNormalizerProjectsPluginWorkflowCapabilities(t *testing.T) {
 		if !slices.Equal(cfg.Video.Resolutions, tc.resolutions) || cfg.Video.DefaultResolution != tc.defaultRes {
 			t.Fatalf("%s resolutions = %#v (default %q), want %#v (%q)", tc.model, cfg.Video.Resolutions, cfg.Video.DefaultResolution, tc.resolutions, tc.defaultRes)
 		}
-		if cfg.Video.Duration.Selection != "range" || cfg.Video.Duration.Min != 1 || cfg.Video.Duration.Max != tc.maxSeconds || cfg.Video.Duration.Default != tc.defaultSecond {
+			if cfg.Video.Duration.Selection != "range" || cfg.Video.Duration.Min != 1 || cfg.Video.Duration.Max != float64(tc.maxSeconds) || cfg.Video.Duration.Default != float64(tc.defaultSecond) {
 			t.Fatalf("%s duration = %#v, want range 1..%d default %d", tc.model, cfg.Video.Duration, tc.maxSeconds, tc.defaultSecond)
 		}
 	}

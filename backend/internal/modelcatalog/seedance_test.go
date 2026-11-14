@@ -88,12 +88,12 @@ func seedanceVideoTaskInput(protocol, modelName, seconds string) TaskInput {
 
 func TestSeedanceSavedDurationLowerBoundTightensTo4Seconds(t *testing.T) {
 	const arkPro = "doubao-seedance-2-0-pro"
-	rangeProfile := func(min, def int) *VideoCapabilityConfig {
+	rangeProfile := func(min, def float64) *VideoCapabilityConfig {
 		v := DefaultModelCapabilityConfigForModel("volcengine-ark-video", arkPro).Video
 		v.Duration = VideoDurationConfig{Selection: "range", Min: min, Max: 15, Step: 1, Default: def}
 		return v
 	}
-	enumProfile := func(values ...int) *VideoCapabilityConfig {
+	enumProfile := func(values ...float64) *VideoCapabilityConfig {
 		v := DefaultModelCapabilityConfigForModel("volcengine-ark-video", arkPro).Video
 		v.Duration = VideoDurationConfig{Selection: "enum", Values: values, Default: values[0]}
 		return v
@@ -132,14 +132,14 @@ func TestSeedanceSavedDurationLowerBoundTightensTo4Seconds(t *testing.T) {
 }
 
 func TestTightenSeedanceOutputDurationKeepsAutomaticAndRepairsDefault(t *testing.T) {
-	enum := VideoDurationConfig{Selection: "enum", Values: []int{-1, 1, 5}, Default: 1}
+	enum := VideoDurationConfig{Selection: "enum", Values: []float64{-1, 1, 5}, Default: 1}
 	tightenSeedanceOutputDuration(&enum)
-	if !slices.Equal(enum.Values, []int{-1, 5}) || enum.Default != 5 {
+	if !slices.Equal(enum.Values, []float64{-1, 5}) || enum.Default != 5 {
 		t.Fatalf("enum = %+v", enum)
 	}
-	onlyAuto := VideoDurationConfig{Selection: "enum", Values: []int{-1, 2}, Default: 2}
+	onlyAuto := VideoDurationConfig{Selection: "enum", Values: []float64{-1, 2}, Default: 2}
 	tightenSeedanceOutputDuration(&onlyAuto)
-	if !slices.Equal(onlyAuto.Values, []int{-1}) {
+	if !slices.Equal(onlyAuto.Values, []float64{-1}) {
 		t.Fatalf("onlyAuto = %+v", onlyAuto)
 	}
 	continuous := VideoDurationConfig{Selection: "range", Continuous: true, FractionalMin: 1.5, Min: 1, Max: 15, Default: 2}
@@ -422,7 +422,7 @@ func TestSeedanceProFlashResolutionAndReferenceRolesTable(t *testing.T) {
 			if !slices.Equal(video.Resolutions, tc.wantResolutions) || video.DefaultResolution != tc.wantDefaultRes {
 				t.Fatalf("resolutions = %v (default %q), want %v (default %q)", video.Resolutions, video.DefaultResolution, tc.wantResolutions, tc.wantDefaultRes)
 			}
-			if video.Duration.Min != tc.wantMinDuration || video.Duration.Default < tc.wantMinDuration {
+			if video.Duration.Min != float64(tc.wantMinDuration) || video.Duration.Default < float64(tc.wantMinDuration) {
 				t.Fatalf("duration = %+v, want min %d", video.Duration, tc.wantMinDuration)
 			}
 			if video.References.MinAudioDuration != tc.wantMinAudioDur {

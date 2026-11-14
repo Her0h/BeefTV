@@ -30,6 +30,7 @@ export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = 
     useEffect(() => () => stopAudioVoicePreview(), []);
 
     const isPreviewingCurrentVoice = Boolean(voice && playingVoice === voice);
+    const canPreviewVoice = profile.voices.some((item) => item.value === voice);
 
     return (
         <ImageSettingsTheme theme={theme}>
@@ -44,7 +45,9 @@ export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = 
                                 type="button"
                                 aria-label={isPreviewingCurrentVoice ? "停止试听" : "试听当前音色"}
                                 aria-pressed={isPreviewingCurrentVoice}
-                                className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-full border px-2.5 text-xs transition hover:opacity-80"
+                                disabled={!canPreviewVoice}
+                                title={canPreviewVoice ? undefined : "自定义音色请生成音频后试听"}
+                                className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-full border px-2.5 text-xs transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                                 style={{ borderColor: isPreviewingCurrentVoice ? theme.node.text : theme.node.stroke, color: theme.node.text }}
                                 onMouseDown={(event) => event.stopPropagation()}
                                 onClick={() => void previewAudioVoice(voice, setPlayingVoice, { speed: Number(speed) || 1 })}
@@ -61,6 +64,21 @@ export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = 
                                 </OptionPill>
                             ))}
                         </div>
+                        <input
+                            aria-label="音色 ID"
+                            type="text"
+                            value={config.audioVoice || ""}
+                            placeholder="输入服务提供的音色 ID"
+                            className="h-9 w-full rounded-full border bg-transparent px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-current"
+                            style={{ borderColor: theme.node.stroke, color: theme.node.text, WebkitTextFillColor: theme.node.text }}
+                            onChange={(event) => {
+                                stopAudioVoicePreview();
+                                setPlayingVoice(null);
+                                onConfigChange("audioVoice", event.target.value);
+                            }}
+                            onBlur={(event) => onConfigChange("audioVoice", normalizeAudioVoiceValue(event.target.value, model))}
+                            onMouseDown={(event) => event.stopPropagation()}
+                        />
                     </SettingGroup>
                 ) : null}
                 <SettingGroup title="格式" color={theme.node.muted}>

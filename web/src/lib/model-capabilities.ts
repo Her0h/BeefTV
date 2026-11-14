@@ -158,14 +158,23 @@ function workflowDefaultString(defaults: Record<string, string | number | boolea
     return "";
 }
 
-function workflowDefaultInt(defaults: Record<string, string | number | boolean> | undefined, ...keys: string[]): number | undefined {
+function workflowDurationNumber(value: unknown): number | undefined {
+    if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+    if (typeof value !== "string") return undefined;
+    const text = value.trim();
+    if (!text || text.startsWith("+") || /^0[xob]/i.test(text)) return undefined;
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function workflowDefaultDuration(defaults: Record<string, string | number | boolean> | undefined, ...keys: string[]): number | undefined {
     if (!defaults) return undefined;
     for (const key of keys) {
         const trimmedKey = key.trim();
         if (!trimmedKey) continue;
         const value = defaults[trimmedKey];
-        if (typeof value === "number" && Number.isFinite(value) && Number.isInteger(value)) return value;
-        if (typeof value === "string" && /^-?\d+$/.test(value.trim())) return Number.parseInt(value.trim(), 10);
+        const parsed = workflowDurationNumber(value);
+        if (parsed !== undefined) return parsed;
     }
     return undefined;
 }
@@ -202,23 +211,22 @@ export function applyProtocolWorkflowVideoCapability(video: VideoCapabilityConfi
         video.defaultResolution = matchWorkflowString(video.resolutions, defRes) || video.resolutions[0]!;
     }
     if (durationParam) {
-        const defDuration = workflowDefaultInt(workflow.defaults, durationParam.name, "duration");
+        const defDuration = workflowDefaultDuration(workflow.defaults, durationParam.name, "duration");
         if (durationParam.values?.length) {
             const values: number[] = [];
             for (const raw of durationParam.values) {
-                const trimmed = String(raw ?? "").trim();
-                if (!/^-?\d+$/.test(trimmed)) continue;
-                const parsed = Number.parseInt(trimmed, 10);
-                if (parsed > 0 && !values.includes(parsed)) values.push(parsed);
+                const parsed = workflowDurationNumber(raw);
+                if (parsed !== undefined && parsed > 0 && !values.includes(parsed)) values.push(parsed);
             }
             if (values.length) {
                 video.duration = { selection: "enum", values, default: defDuration !== undefined && values.includes(defDuration) ? defDuration : values[0]! };
             }
         } else if (typeof durationParam.min === "number" && typeof durationParam.max === "number" && durationParam.min >= 1 && durationParam.max >= durationParam.min) {
-            const min = Math.trunc(durationParam.min);
-            const max = Math.trunc(durationParam.max);
+            const min = durationParam.min;
+            const max = durationParam.max;
+            const step = typeof durationParam.step === "number" && Number.isFinite(durationParam.step) && durationParam.step > 0 ? durationParam.step : 1;
             const fallbackDefault = defDuration !== undefined && defDuration >= min && defDuration <= max ? defDuration : Math.min(max, Math.max(min, video.duration.default));
-            video.duration = { selection: "range", min, max, step: 1, default: fallbackDefault };
+            video.duration = { selection: "range", min, max, step, default: fallbackDefault };
         } else if (defDuration !== undefined && defDuration > 0) {
             video.duration = { selection: "enum", values: [defDuration], default: defDuration };
         }

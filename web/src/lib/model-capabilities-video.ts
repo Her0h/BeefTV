@@ -1,5 +1,6 @@
 import { cleanChannelBaseUrl, isRawChannelBaseUrl } from "@/lib/channel-url";
 import { isVolcengineArkVideoProtocol, type ModelProtocol } from "@/lib/model-protocols";
+import { normalizeVideoRangeDuration } from "@/lib/video-generation-options";
 
 /** 0 means no documented local character limit; the supplier still validates. */
 export const DEFAULT_VIDEO_PROMPT_MAX_CHARS = 0;
@@ -171,7 +172,7 @@ function sanitizeCatalogReferences(input: Record<string, unknown>): VideoCapabil
 
 function sanitizeCatalogDuration(input: Record<string, unknown>): VideoCapabilityConfig["duration"] | null {
     const selection = catalogStringValue(input.selection);
-    const defaultValue = catalogWholeNumber(input.default);
+    const defaultValue = catalogFiniteNumber(input.default);
     if ((selection !== "range" && selection !== "enum") || defaultValue === null) return null;
     if (selection === "range") {
         if (input.continuous===true) {
@@ -179,18 +180,18 @@ function sanitizeCatalogDuration(input: Record<string, unknown>): VideoCapabilit
             if (![min,max,step,fractionalMin].every(Number.isFinite) || fractionalMin<.92 || fractionalMin>min || max<min || max>3600 || step<=0 || defaultValue<min || defaultValue>max) return null;
             return {selection,min,max,step,fractionalMin,default:defaultValue,continuous:true};
         }
-        const min = catalogWholeNumber(input.min);
-        const max = catalogWholeNumber(input.max);
-        const step = catalogWholeNumber(input.step);
+        const min = catalogFiniteNumber(input.min);
+        const max = catalogFiniteNumber(input.max);
+        const step = catalogFiniteNumber(input.step);
         if (min === null || max === null || step === null) return null;
-        if (min < 1 || max < min || max > 3600 || step < 1 || defaultValue < min || defaultValue > max || (defaultValue - min) % step !== 0) return null;
+        if (min < 1 || max < min || max > 3600 || step <= 0 || defaultValue < min || defaultValue > max || Math.abs((defaultValue - min) / step - Math.round((defaultValue - min) / step)) > 1e-7) return null;
         return { selection, min, max, step, default: defaultValue };
     }
     if (!Array.isArray(input.values) || !input.values.length || input.values.length > 100) return null;
     const values: number[] = [];
     const seen = new Set<number>();
     for (const raw of input.values) {
-        const value = catalogWholeNumber(raw);
+        const value = catalogFiniteNumber(raw);
         if (value === null || (value < 1 && value !== -1) || value > 3600 || seen.has(value)) return null;
         seen.add(value);
         values.push(value);
@@ -653,11 +654,7 @@ function normalizeRangeDuration(profile: VideoCapabilityConfig, value: number) {
     const min = profile.duration.continuous ? profile.duration.fractionalMin || profile.duration.min || .92 : profile.duration.min || 1;
     const max = profile.duration.max || min;
     const step = profile.duration.step || 1;
-    const candidate = Number.isFinite(value) ? (profile.duration.continuous ? value : Math.floor(value)) : profile.duration.default;
-    const clamped = Math.min(max, Math.max(min, candidate));
-    if (profile.duration.continuous) return clamped;
-    const maxStep = Math.max(0, Math.floor((max - min) / step));
-    return min + Math.min(maxStep, Math.max(0, Math.round((clamped - min) / step))) * step;
+    return normalizeVideoRangeDuration(value, profile.duration.default, min, max, step, profile.duration.continuous);
 }
 
 // 把模型支持的输出时长写成能照着改的说法：「4–15 秒」「5、10 秒」「自动 或 4–15 秒」。
@@ -680,7 +677,7 @@ export function videoDurationOptions(profile: VideoCapabilityConfig) {
     const min = profile.duration.min || 1;
     const max = profile.duration.max || min;
     const step = profile.duration.step || 1;
-    return Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, index) => min + index * step);
+    return Array.from({ length: Math.floor((max - min) / step + 1e-7) + 1 }, (_, index) => Number((min + index * step).toFixed(10)));
 }
 
 export function videoDurationAllowed(profile: VideoCapabilityConfig, value: number) {

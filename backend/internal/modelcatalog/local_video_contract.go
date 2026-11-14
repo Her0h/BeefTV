@@ -42,7 +42,7 @@ func ApplyLocalVideoContract(item LocalChannelModel, config *ModelCapabilityConf
 	}
 	if contract.Duration != nil {
 		video.Duration.Selection = "range"
-		video.Duration.Min, video.Duration.Max, video.Duration.Default = contract.Duration.Min, contract.Duration.Max, contract.Duration.Default
+		video.Duration.Min, video.Duration.Max, video.Duration.Default = float64(contract.Duration.Min), float64(contract.Duration.Max), float64(contract.Duration.Default)
 	}
 	if contract.GenerateAudio {
 		video.GenerateAudio.Supported = true

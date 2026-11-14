@@ -124,7 +124,7 @@ func TestDreaminaOperationsValidateAndReachOfficialWireContract(t *testing.T) {
 func TestDreaminaDefaultDurationAndAdaptiveAdmission(t *testing.T) {
 	for _, name := range []string{"dreamina-seedance-2-0-260128", "dreamina-seedance-2-0-fast-260128", "dreamina-seedance-2-0-mini-260615", "dreamina-seedance-2-5-260628"} {
 		profile := DefaultModelCapabilityConfigForModel("volcengine-ark-video", name).Video
-		if profile.Duration.Selection != "enum" || len(profile.Duration.Values) != profile.Duration.Max-2 || profile.Duration.Values[0] != -1 || profile.Duration.Values[1] != 4 || profile.Duration.Values[len(profile.Duration.Values)-1] != profile.Duration.Max {
+		if profile.Duration.Selection != "enum" || float64(len(profile.Duration.Values)) != profile.Duration.Max-2 || profile.Duration.Values[0] != -1 || profile.Duration.Values[1] != 4 || profile.Duration.Values[len(profile.Duration.Values)-1] != profile.Duration.Max {
 			t.Fatalf("missing automatic/duration choices: %#v", profile.Duration)
 		}
 		for _, seconds := range []string{"-1", "1", "3", "4", "15", "30"} {
@@ -238,10 +238,10 @@ func TestDefaultSeedance25UsesOfficialCounts(t *testing.T) {
 		t.Fatalf("default 2.5 min audio = %v", profile.References.MinAudioDuration)
 	}
 	if profile.Duration.Min != 4 {
-		t.Fatalf("default 2.5 output duration min = %d", profile.Duration.Min)
+		t.Fatalf("default 2.5 output duration min = %g", profile.Duration.Min)
 	}
 	if profile.Duration.Max < 30 {
-		t.Fatalf("default 2.5 output duration max = %d", profile.Duration.Max)
+		t.Fatalf("default 2.5 output duration max = %g", profile.Duration.Max)
 	}
 	if !containsCapabilityString(profile.Operations, "audio_to_video") {
 		t.Fatalf("operations = %v", profile.Operations)
@@ -290,7 +290,7 @@ func TestValidateVideoTaskHonorsRequestedDurationAndResolution(t *testing.T) {
 	if err := validateVideoTask(profile, input); err == nil {
 		t.Fatal("adaptive -1 accepted without capability support")
 	}
-	profile.Duration = VideoDurationConfig{Selection: "enum", Values: []int{5, 10, -1}, Default: 5}
+	profile.Duration = VideoDurationConfig{Selection: "enum", Values: []float64{5, 10, -1}, Default: 5}
 	if err := validateVideoTask(profile, input); err != nil {
 		t.Fatalf("explicit -1 rejected: %v", err)
 	}
@@ -374,7 +374,7 @@ func TestSeedanceReferenceAudioMessageNamesItemAndFix(t *testing.T) {
 
 func TestSeedanceSavedEnumAndContinuousDurationsRespectDocumentedFloor(t *testing.T) {
 	enumProfile := DefaultModelCapabilityConfigForModel("newapi", "seedance-2.0").Video
-	enumProfile.Duration = VideoDurationConfig{Selection: "enum", Values: []int{-1, 1, 2, 3, 4, 5}, Default: 5}
+	enumProfile.Duration = VideoDurationConfig{Selection: "enum", Values: []float64{-1, 1, 2, 3, 4, 5}, Default: 5}
 	continuous := DefaultModelCapabilityConfigForModel("newapi", "seedance-2.0").Video
 	continuous.Duration = VideoDurationConfig{Selection: "range", Min: 1, Max: 15, Step: 1, FractionalMin: 0.92, Continuous: true, Default: 5}
 	for label, profile := range map[string]*VideoCapabilityConfig{"enum": enumProfile, "continuous": continuous} {
@@ -398,7 +398,7 @@ func TestSeedanceSavedEnumAndContinuousDurationsRespectDocumentedFloor(t *testin
 func TestSeedanceEnumWithoutLegalDurationRejectsSubmission(t *testing.T) {
 	// 保存的枚举全部低于官方 4 秒下限时，没有任何合法时长可提交：
 	// 收紧后必须拒绝，而不是退回原来的 1 秒。
-	for _, values := range [][]int{{1}, {1, 2, 3}} {
+	for _, values := range [][]float64{{1}, {1, 2, 3}} {
 		profile := DefaultModelCapabilityConfigForModel("newapi", "seedance-2.0").Video
 		profile.Duration = VideoDurationConfig{Selection: "enum", Values: slices.Clone(values), Default: 1}
 		for _, seconds := range []string{"1", "2", "3", "4"} {
@@ -690,7 +690,7 @@ func TestNormalizeResolutionSupportsCommonAliases(t *testing.T) {
 
 func TestValidateVideoTaskIgnoresGlobalResolutionWhenCatalogDeclaresNone(t *testing.T) {
 	profile := DefaultModelCapabilityConfigForModel("newapi", "omni").Video
-	profile.Duration = VideoDurationConfig{Selection: "enum", Values: []int{8, 10}, Default: 10}
+	profile.Duration = VideoDurationConfig{Selection: "enum", Values: []float64{8, 10}, Default: 10}
 	profile.Ratios = []string{"16:9", "9:16"}
 	profile.DefaultRatio = "16:9"
 	profile.Resolutions = nil

@@ -200,7 +200,7 @@ func RunSeedanceAgentPlanVideoTask(ctx context.Context, input Input, pollPolicy 
 		}
 		if modelcatalog.IsSeedance25Model(input.Config.Model) {
 			options := SeedanceTaskOptions(input)
-			body.Ratio, body.Duration = options.AspectRatio, options.Duration
+			body.Ratio, body.Duration = options.AspectRatio, int(options.Duration)
 			body.OmniReferenceTaskType = protocol.SeedanceOmniTaskType(options)
 		}
 		// 显式值优先；未设置时沿用能力判断的历史默认。
@@ -340,7 +340,7 @@ func SeedanceVideosRequestBody(input Input) (SeedanceVideosRequest, error) {
 	}
 	options := SeedanceTaskOptions(input)
 	if modelcatalog.IsSeedance25Model(input.Config.Model) {
-		body.AspectRatio, body.Duration = options.AspectRatio, options.Duration
+		body.AspectRatio, body.Duration = options.AspectRatio, int(options.Duration)
 		body.OmniReferenceTaskType = protocol.SeedanceOmniTaskType(options)
 	}
 	// 显式值优先；未设置时沿用能力判断的历史默认。
@@ -450,7 +450,7 @@ func SeedanceTaskImageRole(input Input, image Media) string {
 }
 
 func SeedanceTaskOptions(input Input) protocol.GenerationRequest {
-	r := protocol.GenerationRequest{Model: input.Config.Model, AspectRatio: NormalizeSeedanceRatio(input.Config.Size), Duration: NormalizeSeedanceDuration(input.Config.VideoSeconds), Operation: metadataString(input.Metadata, "videoEditOperation")}
+	r := protocol.GenerationRequest{Model: input.Config.Model, AspectRatio: NormalizeSeedanceRatio(input.Config.Size), Duration: float64(NormalizeSeedanceDuration(input.Config.VideoSeconds)), Operation: metadataString(input.Metadata, "videoEditOperation")}
 	for _, image := range input.ReferenceImages {
 		r.Images = append(r.Images, protocol.MediaReference{Role: SeedanceTaskImageRole(input, image)})
 	}

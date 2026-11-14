@@ -856,7 +856,7 @@ func TestOfficialJimengImageSplitsPixelSize(t *testing.T) {
 func TestOfficialJimengVideoUsesOfficialFramesAspectAndQueryConfig(t *testing.T) {
 	adapter := officialPackageAdapter(t, "volcengine-jimeng-video.beeftv-plugin", "volcengine-jimeng-video")
 	for _, test := range []struct {
-		duration int
+		duration float64
 		frames   float64
 	}{{5, 121}, {10, 241}} {
 		create, err := adapter.BuildCreate(context.Background(), RequestContext{Request: GenerationRequest{

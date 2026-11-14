@@ -43,6 +43,9 @@ export type PluginParameter = {
   required?: boolean;
   description?: string;
   values?: string[];
+  min?: number;
+  max?: number;
+  step?: number;
   mapping?: string;
 };
 

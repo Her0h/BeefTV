@@ -150,8 +150,9 @@
         "required": { "type": "boolean" },
         "description": { "type": "string" },
         "values": { "type": "array", "items": { "type": "string" } },
-        "min": { "type": "integer" },
-        "max": { "type": "integer" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
         "mapping": { "type": "string" }
       },
       "additionalProperties": false

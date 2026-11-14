@@ -31,7 +31,7 @@ func defaultValue(value, fallback string) string {
 	}
 	return value
 }
-func defaultInt(value, fallback int) int {
+func defaultDuration(value, fallback float64) float64 {
 	if value <= 0 {
 		return fallback
 	}

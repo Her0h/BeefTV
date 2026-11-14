@@ -106,7 +106,7 @@ func estimateTarget(catalog *modelcatalog.CatalogResponse, target EstimateTarget
 				resolution = capability.Video.DefaultResolution
 			}
 			if strings.TrimSpace(seconds) == "" && capability.Video.Duration.Default > 0 {
-				seconds = strconv.Itoa(capability.Video.Duration.Default)
+				seconds = strconv.FormatFloat(capability.Video.Duration.Default, 'f', -1, 64)
 			}
 		}
 		request.Resolution = resolution

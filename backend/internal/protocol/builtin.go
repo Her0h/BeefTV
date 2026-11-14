@@ -3,6 +3,7 @@ package protocol
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -19,7 +20,8 @@ type builtinAdapter struct {
 	cancel      func(PollContext) (RequestSpec, error)
 }
 
-func (a builtinAdapter) Metadata() Metadata { return a.info }
+func (a builtinAdapter) Metadata() Metadata    { return a.info }
+func (a builtinAdapter) CancelAvailable() bool { return a.cancel != nil && a.poll != nil }
 func (a builtinAdapter) BuildCreate(_ context.Context, c RequestContext) (RequestSpec, error) {
 	if a.create == nil {
 		return RequestSpec{}, unavailable(a.info)
@@ -186,7 +188,7 @@ func openAIVideosAdapter() Adapter {
 	return videoAdapter(info, func(r GenerationRequest) (RequestSpec, error) {
 		body := map[string]any{"model": r.Model, "prompt": r.Prompt}
 		if r.Duration > 0 {
-			body["seconds"] = strconv.Itoa(r.Duration)
+			body["seconds"] = strconv.FormatFloat(r.Duration, 'f', -1, 64)
 		}
 		if r.AspectRatio != "" {
 			body["size"] = r.AspectRatio
@@ -218,7 +220,7 @@ func newAPIVideosAdapter() Adapter {
 	info.LegacyAliases = []string{"newapi-video-generations"}
 	info.Parameters = videoParams()
 	return videoAdapter(info, func(r GenerationRequest) (RequestSpec, error) {
-		body := map[string]any{"model": r.Model, "prompt": r.Prompt, "seconds": strconv.Itoa(defaultInt(r.Duration, 6)), "aspect_ratio": defaultValue(r.AspectRatio, "16:9")}
+		body := map[string]any{"model": r.Model, "prompt": r.Prompt, "seconds": strconv.FormatFloat(defaultDuration(r.Duration, 6), 'f', -1, 64), "aspect_ratio": defaultValue(r.AspectRatio, "16:9")}
 		copyIf(body, "resolution", r.Resolution)
 		if r.GenerateAudio {
 			body["generate_audio"] = true
@@ -268,7 +270,7 @@ func newAPIChannel1Adapter() Adapter {
 		if len(media) > 0 {
 			input["media"] = media
 		}
-		parameters := map[string]any{"resolution": defaultValue(r.Resolution, "720P"), "ratio": defaultValue(r.AspectRatio, "16:9"), "duration": defaultInt(r.Duration, 5)}
+		parameters := map[string]any{"resolution": defaultValue(r.Resolution, "720P"), "ratio": defaultValue(r.AspectRatio, "16:9"), "duration": defaultDuration(r.Duration, 5)}
 		if r.Watermark {
 			parameters["watermark"] = true
 		}
@@ -280,7 +282,7 @@ func xAIVideosAdapter() Adapter {
 	info := metadata("xai-video", "xAI 官方视频", "xAI", CapabilityVideo, "POST /v1/videos/generations", "GET /v1/videos/{request_id}", "application/json")
 	info.Parameters = videoParams()
 	return videoAdapter(info, func(r GenerationRequest) (RequestSpec, error) {
-		body := map[string]any{"model": r.Model, "prompt": r.Prompt, "duration": defaultInt(r.Duration, 6), "aspect_ratio": defaultValue(r.AspectRatio, "16:9"), "resolution": defaultValue(r.Resolution, "720p")}
+		body := map[string]any{"model": r.Model, "prompt": r.Prompt, "duration": defaultDuration(r.Duration, 6), "aspect_ratio": defaultValue(r.AspectRatio, "16:9"), "resolution": defaultValue(r.Resolution, "720p")}
 		frameImages, referenceImages, unspecifiedImages := splitVideoImages(r.Images)
 		if len(frameImages) > 0 && len(referenceImages) > 0 {
 			return RequestSpec{}, fmt.Errorf("xAI 视频协议不能同时混用首尾帧和角色参考图")
@@ -329,7 +331,7 @@ func arkVideosAdapter() Adapter {
 		for _, audio := range r.Audios {
 			content = append(content, map[string]any{"type": "audio_url", "audio_url": map[string]any{"url": mediaValue(audio)}, "role": "reference_audio"})
 		}
-		body := map[string]any{"model": r.Model, "content": content, "ratio": defaultValue(r.AspectRatio, "16:9"), "resolution": defaultValue(r.Resolution, "720p"), "duration": defaultInt(r.Duration, 5)}
+		body := map[string]any{"model": r.Model, "content": content, "ratio": defaultValue(r.AspectRatio, "16:9"), "resolution": defaultValue(r.Resolution, "720p"), "duration": defaultDuration(r.Duration, 5)}
 		if r.GenerateAudio {
 			body["generate_audio"] = true
 		}
@@ -387,7 +389,7 @@ func novitaVideosAdapter() Adapter {
 		if hasVideoImageRole(r.Images, "reference_image") {
 			return RequestSpec{}, fmt.Errorf("Novita 视频当前不支持角色或风格参考图生视频，请改用支持 reference_to_video 的模型")
 		}
-		body := map[string]any{"model_name": r.Model, "prompt": r.Prompt, "duration": defaultInt(r.Duration, 5), "aspect_ratio": defaultValue(r.AspectRatio, "16:9")}
+		body := map[string]any{"model_name": r.Model, "prompt": r.Prompt, "duration": defaultDuration(r.Duration, 5), "aspect_ratio": defaultValue(r.AspectRatio, "16:9")}
 		if len(r.Images) > 0 {
 			body["image_url"] = mediaValue(r.Images[0])
 		}
@@ -409,7 +411,7 @@ func miniMaxVideosAdapter() Adapter {
 		for _, audio := range r.Audios {
 			content = append(content, map[string]any{"type": "audio_url", "audio_url": map[string]any{"url": mediaValue(audio)}, "role": "reference_audio"})
 		}
-		body := map[string]any{"model": r.Model, "prompt": r.Prompt, "duration": defaultInt(r.Duration, 6), "content": content}
+		body := map[string]any{"model": r.Model, "prompt": r.Prompt, "duration": defaultDuration(r.Duration, 6), "content": content}
 		mergeExtra(body, r.Extra, "model", "prompt", "duration", "content", "resolution", "aspect_ratio")
 		return jsonSpec(http.MethodPost, "/v2/video_generation", body), nil
 	})
@@ -500,7 +502,7 @@ func buildAgnesV25Body(r GenerationRequest) (map[string]any, error) {
 	if mode != "text" && mode != "keyframe" && mode != "reference" {
 		return nil, fmt.Errorf("Agnes 2.5 mode 必须是 text、keyframe 或 reference")
 	}
-	seconds := defaultInt(r.Duration, 5)
+	seconds := defaultDuration(r.Duration, 5)
 	size, err := normalizeAgnesV25Resolution(defaultValue(r.Resolution, firstString(r.Extra, "size")))
 	if err != nil {
 		return nil, err
@@ -526,7 +528,7 @@ func buildAgnesV25Body(r GenerationRequest) (map[string]any, error) {
 		"model":        r.Model,
 		"prompt":       r.Prompt,
 		"mode":         mode,
-		"seconds":      strconv.Itoa(seconds),
+		"seconds":      strconv.FormatFloat(seconds, 'f', -1, 64),
 		"size":         size,
 		"aspect_ratio": aspectRatio,
 		"n":            1,
@@ -640,7 +642,7 @@ func buildAgnesV20Body(r GenerationRequest) (map[string]any, error) {
 			body["frame_rate"] = frameRate
 		}
 		if _, supplied := r.Extra["num_frames"]; !supplied {
-			target := r.Duration * frameRate
+			target := int(math.Ceil(r.Duration * float64(frameRate)))
 			frames := ((target-1+4)/8)*8 + 1
 			if frames > 441 {
 				frames = 441

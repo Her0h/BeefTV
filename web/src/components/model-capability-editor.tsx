@@ -147,15 +147,15 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                     disabled={disabled}
                                     value={durationValues}
                                     placeholder="例如：5,10"
-                                    onChange={(event) => updateDuration({ values: parseIntegerList(event.target.value), default: parseIntegerList(event.target.value)[0] || profile.duration.default })}
+                                    onChange={(event) => updateDuration({ values: parseDurationList(event.target.value), default: parseDurationList(event.target.value)[0] || profile.duration.default })}
                                 />
                             </Field>
                         ) : (
                             <div className="admin-capability-duration-grid">
-                                <NumberField label="最短" value={profile.duration.min} min={1} disabled={disabled} onChange={(value) => updateDuration({ min: value || 1 })} />
-                                <NumberField label="最长" value={profile.duration.max} min={1} disabled={disabled} onChange={(value) => updateDuration({ max: value || 1 })} />
-                                <NumberField label="步长" value={profile.duration.step} min={1} disabled={disabled} onChange={(value) => updateDuration({ step: value || 1 })} />
-                                <NumberField label="默认" value={profile.duration.default} min={1} disabled={disabled} onChange={(value) => updateDuration({ default: value || 1 })} />
+                                <NumberField label="最短" value={profile.duration.min} min={1} precision={3} step={profile.duration.step || 1} disabled={disabled} onChange={(value) => updateDuration({ min: value || 1 })} />
+                                <NumberField label="最长" value={profile.duration.max} min={1} precision={3} step={profile.duration.step || 1} disabled={disabled} onChange={(value) => updateDuration({ max: value || 1 })} />
+                                <NumberField label="步长" value={profile.duration.step} min={0.001} precision={3} step={0.25} disabled={disabled} onChange={(value) => updateDuration({ step: value || 1 })} />
+                                <NumberField label="默认" value={profile.duration.default} min={1} precision={3} step={profile.duration.step || 1} disabled={disabled} onChange={(value) => updateDuration({ default: value || 1 })} />
                             </div>
                         )}
                     </ProtocolParameterCard>
@@ -259,15 +259,15 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                 disabled={disabled}
                                 value={durationValues}
                                 placeholder="例如：5,10"
-                                onChange={(event) => updateDuration({ values: parseIntegerList(event.target.value), default: parseIntegerList(event.target.value)[0] || profile.duration.default })}
+                                onChange={(event) => updateDuration({ values: parseDurationList(event.target.value), default: parseDurationList(event.target.value)[0] || profile.duration.default })}
                             />
                         </Field>
                     ) : (
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                            <NumberField label="最短" value={profile.duration.min} min={1} disabled={disabled} onChange={(value) => updateDuration({ min: value || 1 })} />
-                            <NumberField label="最长" value={profile.duration.max} min={1} disabled={disabled} onChange={(value) => updateDuration({ max: value || 1 })} />
-                            <NumberField label="步长" value={profile.duration.step} min={1} disabled={disabled} onChange={(value) => updateDuration({ step: value || 1 })} />
-                            <NumberField label="默认" value={profile.duration.default} min={1} disabled={disabled} onChange={(value) => updateDuration({ default: value || 1 })} />
+                            <NumberField label="最短" value={profile.duration.min} min={1} precision={3} step={profile.duration.step || 1} disabled={disabled} onChange={(value) => updateDuration({ min: value || 1 })} />
+                            <NumberField label="最长" value={profile.duration.max} min={1} precision={3} step={profile.duration.step || 1} disabled={disabled} onChange={(value) => updateDuration({ max: value || 1 })} />
+                            <NumberField label="步长" value={profile.duration.step} min={0.001} precision={3} step={0.25} disabled={disabled} onChange={(value) => updateDuration({ step: value || 1 })} />
+                            <NumberField label="默认" value={profile.duration.default} min={1} precision={3} step={profile.duration.step || 1} disabled={disabled} onChange={(value) => updateDuration({ default: value || 1 })} />
                         </div>
                     )}
                 </CapabilityBlock>
@@ -684,11 +684,11 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
     );
 }
 
-function NumberField({ label, value, min, max, disabled, onChange }: { label: string; value?: number; min: number; max?: number; disabled: boolean; onChange: (value: number | null) => void }) {
+function NumberField({ label, value, min, max, disabled, onChange, precision = 0, step = 1 }: { label: string; value?: number; min: number; max?: number; disabled: boolean; precision?: number; step?: number; onChange: (value: number | null) => void }) {
     return (
         <label className="admin-capability-number-field block min-w-0">
             <span className="admin-capability-field-label mb-1.5 block text-xs text-foreground/62">{label}</span>
-            <InputNumber className="w-full" disabled={disabled} min={min} max={max} precision={0} value={value} onChange={onChange} />
+            <InputNumber className="w-full" disabled={disabled} min={min} max={max} precision={precision} step={step} value={value} onChange={onChange} />
         </label>
     );
 }
@@ -771,13 +771,13 @@ function mbToBytes(value: number | null) {
     return Math.max(0, Math.round(Number(value || 0) * 1024 * 1024));
 }
 
-function parseIntegerList(value: string) {
+function parseDurationList(value: string) {
     return Array.from(
         new Set(
             value
                 .split(",")
                 .map((item) => Number(item.trim()))
-                .filter((item) => Number.isInteger(item) && item > 0),
+                .filter((item) => Number.isFinite(item) && item > 0),
         ),
     ).sort((left, right) => left - right);
 }

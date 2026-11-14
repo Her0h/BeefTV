@@ -67,34 +67,38 @@ func applyProtocolWorkflowVideoCapability(video *VideoCapabilityConfig, workflow
 	}
 
 	if durationParam != nil {
-		defDuration, hasDefDuration := workflowDefaultInt(workflow.Defaults, durationParam.Name, "duration")
+		defDuration, hasDefDuration := workflowDefaultDuration(workflow.Defaults, durationParam.Name, "duration")
 		if len(durationParam.Values) > 0 {
-			values := make([]int, 0, len(durationParam.Values))
+			values := make([]float64, 0, len(durationParam.Values))
 			for _, raw := range durationParam.Values {
 				trimmed := strings.TrimSpace(raw)
 				if !strings.HasPrefix(trimmed, "+") {
-					if parsed, err := strconv.Atoi(trimmed); err == nil && parsed > 0 && !containsInt(values, parsed) {
+					if parsed, err := strconv.ParseFloat(trimmed, 64); err == nil && finiteDuration(parsed) && parsed > 0 && !containsDuration(values, parsed) {
 						values = append(values, parsed)
 					}
 				}
 			}
 			if len(values) > 0 {
 				chosen := values[0]
-				if hasDefDuration && containsInt(values, defDuration) {
+				if hasDefDuration && containsDuration(values, defDuration) {
 					chosen = defDuration
 				}
 				video.Duration = VideoDurationConfig{Selection: "enum", Values: values, Default: chosen}
 			}
 		} else if durationParam.Min != nil && durationParam.Max != nil && *durationParam.Min >= 1 && *durationParam.Max >= *durationParam.Min {
-			minSeconds := *durationParam.Min
-			maxSeconds := *durationParam.Max
+			minSeconds := float64(*durationParam.Min)
+			maxSeconds := float64(*durationParam.Max)
 			chosen := min(maxSeconds, max(minSeconds, video.Duration.Default))
 			if hasDefDuration && defDuration >= minSeconds && defDuration <= maxSeconds {
 				chosen = defDuration
 			}
-			video.Duration = VideoDurationConfig{Selection: "range", Min: minSeconds, Max: maxSeconds, Step: 1, Default: chosen}
+			step := 1.0
+			if durationParam.Step != nil && finiteDuration(*durationParam.Step) && *durationParam.Step > 0 {
+				step = *durationParam.Step
+			}
+			video.Duration = VideoDurationConfig{Selection: "range", Min: minSeconds, Max: maxSeconds, Step: step, Default: chosen}
 		} else if hasDefDuration && defDuration > 0 {
-			video.Duration = VideoDurationConfig{Selection: "enum", Values: []int{defDuration}, Default: defDuration}
+			video.Duration = VideoDurationConfig{Selection: "enum", Values: []float64{defDuration}, Default: defDuration}
 		}
 	}
 }
@@ -151,7 +155,7 @@ func workflowDefaultString(defaults map[string]any, keys ...string) string {
 	return ""
 }
 
-func workflowDefaultInt(defaults map[string]any, keys ...string) (int, bool) {
+func workflowDefaultDuration(defaults map[string]any, keys ...string) (float64, bool) {
 	for _, key := range keys {
 		trimmedKey := strings.TrimSpace(key)
 		if trimmedKey == "" || defaults == nil {
@@ -159,17 +163,17 @@ func workflowDefaultInt(defaults map[string]any, keys ...string) (int, bool) {
 		}
 		switch typed := defaults[trimmedKey].(type) {
 		case int:
-			return typed, true
+			return float64(typed), true
 		case int64:
-			return int(typed), true
+			return float64(typed), true
 		case float64:
-			if !math.IsNaN(typed) && !math.IsInf(typed, 0) && math.Trunc(typed) == typed {
-				return int(typed), true
+			if finiteDuration(typed) {
+				return typed, true
 			}
 		case string:
 			trimmed := strings.TrimSpace(typed)
 			if !strings.HasPrefix(trimmed, "+") {
-				if parsed, err := strconv.Atoi(trimmed); err == nil {
+				if parsed, err := strconv.ParseFloat(trimmed, 64); err == nil && finiteDuration(parsed) {
 					return parsed, true
 				}
 			}

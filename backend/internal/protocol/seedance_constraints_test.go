@@ -40,8 +40,8 @@ func TestSeedanceTaskConstraints(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := GenerationRequest{Model: tc.model, Prompt: "edit this video", AspectRatio: "9:16", Duration: 6, Operation: tc.operation, Images: []MediaReference{{Role: tc.role}}, Videos: make([]MediaReference, tc.videos)}
 			got := NormalizeSeedanceTaskOptions(r)
-			if got.AspectRatio != tc.ratio || got.Duration != tc.duration {
-				t.Fatalf("got ratio=%s duration=%d", got.AspectRatio, got.Duration)
+			if got.AspectRatio != tc.ratio || got.Duration != float64(tc.duration) {
+				t.Fatalf("got ratio=%s duration=%g", got.AspectRatio, got.Duration)
 			}
 		})
 	}

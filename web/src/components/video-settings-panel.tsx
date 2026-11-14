@@ -6,7 +6,7 @@ import { ImageSettingsTheme } from "@/components/image-settings-panel";
 import { boolConfig, isSeedanceVideoConfig, normalizeSeedanceDuration, normalizeSeedanceRatio, normalizeSeedanceResolution, seedanceRatioOptions } from "@/lib/seedance-video";
 import { isVolcengineArkVideoProtocol } from "@/lib/model-protocols";
 import { type CanvasTheme } from "@/lib/canvas-theme";
-import { formatVideoResolutionLabel, isVideoResolutionMatch, normalizeVideoDuration, sortVideoResolutionOptions, videoDimensionsForRatioAndResolution, VIDEO_DURATION_MIN } from "@/lib/video-generation-options";
+import { formatVideoResolutionLabel, isVideoResolutionMatch, normalizeVideoDuration, normalizeVideoRangeDuration, sortVideoResolutionOptions, videoDimensionsForRatioAndResolution, VIDEO_DURATION_MIN } from "@/lib/video-generation-options";
 import { modelCapabilityConfigFor, normalizeVideoValue, resolveVideoRatioValue, resolveVideoResolutionValue, videoDurationOptions, videoSupportsTaskTypeConstraints, type VideoCapabilityConfig } from "@/lib/model-capabilities";
 import { modelOptionName, resolveModelChannel, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
 
@@ -298,11 +298,11 @@ function DimensionValue({ prefix, value, theme }: { prefix: string; value: numbe
     );
 }
 
-function DurationInput({ value, min, max, theme, onChange, continuous = false }: { value: number; min: number; max?: number; theme: CanvasTheme; onChange: (value: number) => void; continuous?: boolean }) {
+function DurationInput({ value, min, max, step, theme, onChange, continuous = false }: { value: number; min: number; max?: number; step: number; theme: CanvasTheme; onChange: (value: number) => void; continuous?: boolean }) {
     const commit = (input: HTMLInputElement) => {
         const parsed = Number(input.value);
         const candidate = continuous ? (input.value.trim() && Number.isFinite(parsed) ? parsed : value || min) : parsed || value || min;
-        const next = Math.min(max || Number.POSITIVE_INFINITY, Math.max(min, continuous ? candidate : Math.floor(candidate)));
+        const next = normalizeVideoRangeDuration(candidate, value || min, min, max || Number.POSITIVE_INFINITY, step, continuous);
         input.value = String(next);
         onChange(next);
     };
@@ -312,8 +312,8 @@ function DurationInput({ value, min, max, theme, onChange, continuous = false }:
             <input
                 key={`${min}-${value}`}
                 type="number"
-                inputMode={continuous ? "decimal" : "numeric"}
-                step={continuous ? "any" : 1}
+                inputMode={continuous || step < 1 ? "decimal" : "numeric"}
+                step={continuous ? "any" : step}
                 min={min}
                 max={max}
                 defaultValue={value}
@@ -336,10 +336,10 @@ function VideoDurationControl({ profile, value, theme, disabled, onChange }: { p
     if (profile.duration.selection === "range") {
         const min = profile.duration.fractionalMin ?? (profile.duration.min || VIDEO_DURATION_MIN);
         const max = Math.max(min, profile.duration.max || min);
-        const step = Math.max(1, profile.duration.step || 1);
+        const step = profile.duration.step || 1;
         const normalized = profile.duration.continuous
             ? Math.max(min, Math.min(max, Number.isFinite(value) ? value : profile.duration.default))
-            : normalizeDurationValue(value, profile.duration.default, min, max, step);
+            : normalizeVideoRangeDuration(value, profile.duration.default, min, max, step);
         return (
             <DurationRangeControl
                 value={normalized}
@@ -359,7 +359,7 @@ function VideoDurationControl({ profile, value, theme, disabled, onChange }: { p
     return (
         <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(options.length, 4)}, minmax(0, 1fr))` }}>
             {options.map((option) => (
-                <OptionPill key={option} selected={normalizedNumber(value) === option} disabled={disabled?.(option)} theme={theme} onClick={() => onChange(option)}>
+                <OptionPill key={option} selected={value === option} disabled={disabled?.(option)} theme={theme} onClick={() => onChange(option)}>
                     {option === -1 ? "自动" : `${option}s`}
                 </OptionPill>
             ))}
@@ -383,7 +383,7 @@ function DurationRangeControl({ value, min, max, step, theme, onChange, continuo
                     onChange={(event) => onChange(Number(event.target.value))}
                     onMouseDown={(event) => event.stopPropagation()}
                 />
-                <DurationInput value={value} min={min} max={max} theme={theme} onChange={onChange} continuous={continuous} />
+                <DurationInput value={value} min={min} max={max} step={typeof step === "number" ? step : 1} theme={theme} onChange={onChange} continuous={continuous} />
             </div>
             <div className="flex justify-between px-0.5 text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>
                 <span>{min}s</span>
@@ -391,17 +391,6 @@ function DurationRangeControl({ value, min, max, step, theme, onChange, continuo
             </div>
         </div>
     );
-}
-
-function normalizeDurationValue(value: number, fallback: number, min: number, max: number, step: number) {
-    const candidate = Number.isFinite(value) ? value : fallback;
-    const clamped = Math.min(max, Math.max(min, Math.floor(candidate)));
-    const maxStep = Math.max(0, Math.floor((max - min) / step));
-    return min + Math.min(maxStep, Math.max(0, Math.round((clamped - min) / step))) * step;
-}
-
-function normalizedNumber(value: number) {
-    return Number.isFinite(value) ? Math.floor(value) : 0;
 }
 
 function SizePreview({ width, height, color }: { width: number; height: number; color: string }) {

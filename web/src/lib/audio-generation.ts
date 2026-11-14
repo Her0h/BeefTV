@@ -176,7 +176,8 @@ export function normalizeAudioVoiceValue(value: string, model?: string) {
         if (!trimmed || trimmed === "auto" || trimmed.endsWith("_bigtts") || trimmed.startsWith("ICL_") || OPENAI_SPEECH_VOICES.has(trimmed) || trimmed === "中文") return profile.defaultVoice;
         return trimmed;
     }
-    return OPENAI_SPEECH_VOICES.has(trimmed) ? trimmed : profile.defaultVoice;
+    // Compatible services own their voice IDs; presets are suggestions, not a whitelist.
+    return trimmed && trimmed !== "中文" ? trimmed : profile.defaultVoice;
 }
 
 export function normalizeAudioFormatValue(value: string, model?: string) {

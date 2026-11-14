@@ -21,8 +21,20 @@ export function normalizeVideoBoolean(value: unknown): "true" | "false" | undefi
 
 export function normalizeVideoDuration(value: string | number | undefined) {
     if (Number(value) === -1) return "-1";
-    const seconds = Math.floor(Number(value) || VIDEO_DURATION_OPTIONS[0]);
+    // Saved preferences must retain precision until the selected capability is applied.
+    const parsed = Number(value);
+    const seconds = Number.isFinite(parsed) && parsed !== 0 ? parsed : VIDEO_DURATION_OPTIONS[0];
     return String(Math.max(VIDEO_DURATION_MIN, seconds));
+}
+
+export function normalizeVideoRangeDuration(value: number, fallback: number, min: number, max: number, step = 1, continuous = false) {
+    const candidate = Number.isFinite(value) ? value : fallback;
+    const precise = continuous || step < 1 ? candidate : Math.floor(candidate);
+    const clamped = Math.min(max, Math.max(min, precise));
+    if (continuous) return clamped;
+    const maxStep = Math.max(0, Math.floor((max - min) / step + 1e-7));
+    const selectedStep = Math.min(maxStep, Math.max(0, Math.round((clamped - min) / step)));
+    return Number((min + selectedStep * step).toFixed(10));
 }
 
 export function normalizeVideoResolution(value: string | number | undefined) {

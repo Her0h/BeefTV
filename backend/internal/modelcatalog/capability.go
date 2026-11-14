@@ -432,15 +432,6 @@ func containsCapabilityString(values []string, target string) bool {
 	return false
 }
 
-func containsInt(values []int, target int) bool {
-	for _, value := range values {
-		if value == target {
-			return true
-		}
-	}
-	return false
-}
-
 func absFloat(value float64) float64 {
 	if value < 0 {
 		return -value

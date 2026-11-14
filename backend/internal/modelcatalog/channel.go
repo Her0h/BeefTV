@@ -24,7 +24,7 @@ func validateChannelModelTierCapabilities(tiers []model.ChannelModelVariant, raw
 	for _, resolution := range config.Video.Resolutions {
 		resolutionSupported[normalizeChannelModelTierResolution(resolution)] = true
 	}
-	durationSupported := make(map[int]bool, len(config.Video.Duration.Values))
+	durationSupported := make(map[float64]bool, len(config.Video.Duration.Values))
 	for _, seconds := range config.Video.Duration.Values {
 		durationSupported[seconds] = true
 	}
@@ -38,10 +38,10 @@ func validateChannelModelTierCapabilities(tiers []model.ChannelModelVariant, raw
 		if !videoDurationSupported(config.Video) {
 			continue
 		}
-		if config.Video.Duration.Selection == "enum" && !durationSupported[tier.VideoSeconds] {
+		if config.Video.Duration.Selection == "enum" && !durationSupported[float64(tier.VideoSeconds)] {
 			return kernel.BadAuthRequest(fmt.Sprintf("变体时长 %d 秒不在该视频模型支持范围内", tier.VideoSeconds))
 		}
-		if config.Video.Duration.Selection == "range" && !videoDurationAllowed(config.Video.Duration, tier.VideoSeconds) {
+		if config.Video.Duration.Selection == "range" && !videoDurationAllowed(config.Video.Duration, float64(tier.VideoSeconds)) {
 			return kernel.BadAuthRequest(fmt.Sprintf("变体时长 %d 秒不在该视频模型支持范围内", tier.VideoSeconds))
 		}
 	}

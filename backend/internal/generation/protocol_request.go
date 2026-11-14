@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -110,7 +111,7 @@ func ProtocolRequestFromInput(input Input) protocol.GenerationRequest {
 		request.Extra["max_output_tokens"] = input.MaxOutputTokens
 		request.Extra["max_tokens"] = input.MaxOutputTokens
 	}
-	if duration, err := strconv.Atoi(strings.TrimSpace(input.Config.VideoSeconds)); err == nil && (duration > 0 || (duration == -1 && (model.IsVolcengineArkVideoProtocol(model.ChannelInterfaceType(input.Config.InterfaceType)) || (input.VideoCapability != nil && input.VideoCapability.TaskTypeConstraints)))) {
+	if duration, err := strconv.ParseFloat(strings.TrimSpace(input.Config.VideoSeconds), 64); err == nil && !math.IsNaN(duration) && !math.IsInf(duration, 0) && (duration > 0 || (duration == -1 && (model.IsVolcengineArkVideoProtocol(model.ChannelInterfaceType(input.Config.InterfaceType)) || (input.VideoCapability != nil && input.VideoCapability.TaskTypeConstraints)))) {
 		request.Duration = duration
 	}
 	if count, err := strconv.Atoi(strings.TrimSpace(input.Config.Count)); err == nil && count > 0 {

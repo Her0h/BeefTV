@@ -117,7 +117,7 @@ description: 用 JSON 或 JS 把图片、视频、音频和文本服务接进 Be
 | `parameters` | 这个协议支持哪些参数的说明，写给读插件的人看，BeefTV 不读取 |
 | `requiresPublicMediaUrls` | 服务只接受公网素材地址时写 `true` |
 
-也可以写 `cancel`，但 BeefTV 目前不会发这个请求。
+HTTP 接口可以声明 `cancel`，宿主通过已安装的协议适配器发送取消请求，再用 `poll` 核对终态。只有查询明确返回 `cancelled` 才确认上游已取消；HTTP 2xx/204 或查询到 404 都不能单独证明计算已经停止。声明的操作必须对应供应商真正的取消语义，不能把删除任务记录当作停止生成。JS 接口目前仍只提供提交与查询，不调用上游取消。
 
 `auth.field` 选用哪把密钥：`apiKey` 或 `secretKey`。
 
@@ -239,8 +239,35 @@ JSON 里任何一个值都可以写成表达式。能读到的数据：
 同一个协议下不同模型（工作流 ID）支持的分辨率枚举或时长范围不同时，在 `contributes.workflows` 按模型列出。设置页和后端能力归一化都会读取它，请求阶段的表达式也能直接读 `workflow.values.<name>` / `workflow.defaults.<name>`，不必把枚举表重复写进 `variables`：
 
 - `id`、`label`、`providerId`、`capability`：模型 ID、显示名、所属协议 ID（须与 `providers[].id` 一致）和能力（如 `video`）。
-- `parameters`：每项包含 `name`、`type`、可选的 `mapping`（对应 `aspectRatio`、`resolution`、`duration` 等标准字段）、离散枚举 `values` 或连续整数区间 `min` / `max`。连续视频时长由结构化 `min` 和 `max` 决定，不从 `description` 文案解析。
+- `parameters`：每项包含 `name`、`type`、可选的 `mapping`（对应 `aspectRatio`、`resolution`、`duration` 等标准字段）、离散枚举 `values` 或数值区间 `min` / `max`；`step` 声明区间的取值步长，省略时为 `1`。视频时长由这些结构化字段决定，不从 `description` 文案解析。
 - `defaults`：各参数默认值。
+
+时长可以声明小数，例如下面的工作流允许 1–5 秒、每次递增 0.25 秒，默认 2.5 秒。目录、工作流默认值和生成请求保留该精度；整数步长的模型仍使用整数取值。是否支持这些输入以及实际输出帧数，由上游服务校验。
+
+```json
+{
+  "id": "reference-video",
+  "label": "参考视频",
+  "providerId": "my-video",
+  "capability": "video",
+  "parameters": [{ "name": "duration", "type": "number", "min": 1, "max": 5, "step": 0.25 }],
+  "defaults": { "duration": 2.5 }
+}
+```
+
+### 语音音色和声音指令
+
+音频设置允许选择预设音色，也允许输入服务提供的音色 ID。兼容语音接口中的自定义 ID 会保留到请求，不会因为不在预设列表里被替换成 `alloy`；服务端负责判断 ID 是否存在和有权使用。自定义音色需要生成音频后试听，界面不会用预设样本冒充该音色。
+
+音频字段由宿主传给插件的位置如下；`openai-audio` 已按这些字段构造语音请求，JS 插件也应读取对应位置：
+
+| 界面设置 | 插件请求字段 |
+| --- | --- |
+| 音色 ID | `request.extra.audioVoice` |
+| 声音指令 | `request.extra.audioInstructions` |
+| 音频格式 | `request.extra.audioFormat` |
+
+`request.instructions` 是通用系统指令，不是音频设置中的声音指令。已有供应商预设的默认值迁移保持原行为；音色注册、参考录音授权和克隆素材由对应服务处理。
 
 ### 更多例子
 
