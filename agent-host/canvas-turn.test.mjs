@@ -262,7 +262,7 @@ describe("供应商定义", () => {
             const unknown = providerRegistration({ api, baseUrl: "https://relay.example.com/v1", modelId: "m", maxTokens: 16384, contextWindow: 200000 }).models[0];
             expect(unknown.reasoning).toBe(false);
             if (api === "openai-completions") {
-                expect(unknown.compat).toEqual({ promptCacheKeyMode: "enabled" });
+                expect(unknown.compat).toEqual({ supportsDeveloperRole: false, promptCacheKeyMode: "enabled" });
             }
         }
     });

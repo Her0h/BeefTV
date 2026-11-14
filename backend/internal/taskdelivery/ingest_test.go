@@ -447,6 +447,7 @@ func openIngestHarness(t *testing.T, dbPath, dataDir string, quota asset.Quota) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { closeSQL(t, db) })
 	if err := db.AutoMigrate(&model.Resource{}, &model.UserDailyUploadUsage{}, &model.UserUploadReservation{}); err != nil {
 		t.Fatal(err)
 	}

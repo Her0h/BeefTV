@@ -246,7 +246,7 @@ export function providerRegistration({ api, baseUrl, modelId, maxTokens, context
   const catalogModel = catalog?.model;
   const catalogCompat = catalog?.sameApi && catalogModel?.compat ? catalogModel.compat : undefined;
   const compat = api === 'openai-completions'
-    ? { ...catalogCompat, promptCacheKeyMode: 'enabled' }
+    ? { supportsDeveloperRole: false, ...catalogCompat, promptCacheKeyMode: 'enabled' }
     : catalogCompat ? { ...catalogCompat } : undefined;
   return {
     name: 'BeefTV', baseUrl, apiKey: '$BEEFTV_AGENT_API_KEY', api,
