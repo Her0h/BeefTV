@@ -20,11 +20,30 @@ import {
 } from "@/services/api/media-upscale";
 import { useCanvasNodeActions } from "../canvas-node-action-context";
 import { CanvasNodeGraphContext, useUpstreamNodes } from "../canvas-node-graph-context";
+import { ProtocolUpscaleContent } from "./protocol-upscale-content";
+import { isProtocolUpscaleChannel } from "@/services/api/protocol-upscale";
 
 const modeLabels: Partial<Record<UpscaleMode, string>> = { precision: "保真增强", generative: "细节重建" };
 const batchLabels = { waiting: "等待提交", submitting: "提交中", accepted: "已提交", rejected: "提交失败", unknown: "待确认" };
 
 export function UpscaleNodeContent({ node, theme }: { node: CanvasNodeData; theme: CanvasTheme }) {
+    const config = useEffectiveConfig();
+    const actions = useCanvasNodeActions();
+    const protocols = config.channels.filter(isProtocolUpscaleChannel);
+    const official = config.channels.some(channel => channel.enabled !== false && isBuiltinBeefTVChannel(channel) && channelHasGenerationCredential(channel));
+    const desired = node.metadata?.upscale?.channelId || "beeftv";
+    const channel = protocols.find(item => item.id === desired) || (!official && desired === "beeftv" ? protocols[0] : undefined);
+    const selected = channel?.id || "beeftv";
+    if (!protocols.length) return <OfficialUpscaleNodeContent node={node} theme={theme} />;
+    return <div className="flex h-full min-h-0 flex-col" data-canvas-no-drag data-canvas-no-zoom>
+        <div className="p-2"><Select className="w-full" aria-label="超分渠道" value={selected}
+            options={[{ label: "BeefTV 官方算力", value: "beeftv" }, ...protocols.map(item => ({ label: item.name, value: item.id }))]}
+            onChange={channelId => actions.updateMetadata?.(node.id, { upscale: { ...createDefaultUpscaleSettings(), ...node.metadata?.upscale, channelId } })} /></div>
+        {channel ? <ProtocolUpscaleContent node={node} theme={theme} channel={channel} /> : <OfficialUpscaleNodeContent node={node} theme={theme} />}
+    </div>;
+}
+
+function OfficialUpscaleNodeContent({ node, theme }: { node: CanvasNodeData; theme: CanvasTheme }) {
     const actions = useCanvasNodeActions();
     const { getNode } = useContext(CanvasNodeGraphContext);
     const upstream = useUpstreamNodes(node.id);

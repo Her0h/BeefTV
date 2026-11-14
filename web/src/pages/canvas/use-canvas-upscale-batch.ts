@@ -7,6 +7,7 @@ import { createDefaultUpscaleSettings, deriveUpscaleBatchState, getUpscaleInputN
 import { fitNodeSize } from "@/lib/canvas/canvas-node-size";
 import { mediaResultMetadata } from "@/lib/canvas/canvas-node-semantics";
 import { createUpscaleTask, estimateUpscale } from "@/services/api/media-upscale";
+import { protocolUpscaleChannel } from "@/services/api/protocol-upscale";
 import { findGenerationTaskByOperation, queryGenerationTask, type GenerationTask } from "@/services/api/task-center";
 import { syncLocalCanvasSnapshot } from "@/services/local-workspace-sync";
 import { flushCanvasStorePersistence, useCanvasStore } from "@/stores/canvas/use-canvas-store";
@@ -53,6 +54,7 @@ export function useCanvasUpscaleBatch({pageUi,  projectId, nodesRef, connections
         const confirm = async (items: CanvasUpscaleBatchItem[]) => {
             const waiting = items.filter(item => item.status === "waiting");
             if (!waiting.length) throw new Error(items.find(item => item.error)?.error || "没有可提交的素材");
+            if (waiting.every(item => item.params && protocolUpscaleChannel(item.params.channelId))) return true;
             const reservation = waiting.reduce((sum, item) => sum + (item.reservation || 0), 0);
             if (!waiting.every(item => Number.isFinite(item.reservation) && item.reservation! > 0)) throw new Error("超分费用尚未确认，请重新获取");
             const accepted = await new Promise<boolean>(resolve => modal.confirm({
@@ -221,7 +223,7 @@ export function useCanvasUpscaleBatch({pageUi,  projectId, nodesRef, connections
                     await save();
                     continue;
                 }
-                if (!useConfigStore.getState().config.channels.some(channel => channel.enabled !== false && isBuiltinBeefTVChannel(channel) && channelHasGenerationCredential(channel))) {
+                if (!protocolUpscaleChannel(item.params.channelId) && !useConfigStore.getState().config.channels.some(channel => channel.enabled !== false && isBuiltinBeefTVChannel(channel) && channelHasGenerationCredential(channel))) {
                     update(item, { status: "rejected", error: "暂无可用超分模型，请连接 BeefTV 内置的官方算力" });
                     await save();
                     continue;

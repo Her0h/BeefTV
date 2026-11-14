@@ -1,8 +1,8 @@
-import { isAIUpscaleTask, isDefinitePreAdmissionClientReject, isVideoSubtitleEraseTask, unknownSubmissionMetadata, upscaleObservationFailureMetadata, UPSCALE_OBSERVATION_TIMEOUT_MS } from "@/lib/canvas/canvas-ai-upscale-task";
+import { isAIUpscaleTask, isProtocolUpscaleTask, isDefinitePreAdmissionClientReject, isVideoSubtitleEraseTask, unknownSubmissionMetadata, upscaleObservationFailureMetadata, UPSCALE_OBSERVATION_TIMEOUT_MS } from "@/lib/canvas/canvas-ai-upscale-task";
 import { recoverUpscaleTask } from "@/services/api/media-upscale";
 import { createVideoSubtitleEraseTask, recoverVideoSubtitleEraseTask } from "@/services/api/video-subtitle-erase";
 import { bindBackendCanvasGenerationResult } from "@/services/canvas-generation-consumer";
-import { findGenerationTaskByOperation, queryGenerationTask, waitForGenerationTask, type GenerationTask } from "@/services/api/task-center";
+import { findGenerationTaskByOperation, queryGenerationTask, recoverTask, waitForGenerationTask, type GenerationTask } from "@/services/api/task-center";
 import { getImageBlob, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { ownedResourceIdFromMediaRef, uploadResourceFile } from "@/services/api/resources";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
@@ -184,7 +184,7 @@ export function useCanvasMediaTools({
         }
         if (!original) throw new Error("找不到原超分任务");
         if (!isAIUpscaleTask(original)) throw new Error("该任务不是超分任务");
-        const task = original.status === "failed" ? await recoverUpscaleTask(original.id) : original;
+        const task = original.status === "failed" ? await (isProtocolUpscaleTask(original) ? recoverTask(original.id) : recoverUpscaleTask(original.id)) : original;
         if (projectIdRef.current !== projectId) return;
         bindGenerationTask(node.id, task);
         setNodes(current => current.map(item => item.id === node.id ? { ...item, metadata: { ...item.metadata, taskId: task.id, generationSubmissionState: "accepted", status: "loading", errorDetails: undefined, processingLabel: "取回原超分任务结果" } } : item));

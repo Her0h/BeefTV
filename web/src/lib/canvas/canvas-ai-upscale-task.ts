@@ -7,7 +7,12 @@ import type { GenerationTask } from "@/services/api/task-center";
 // A stopped observer says nothing about the paid task's execution state.
 export const UPSCALE_OBSERVATION_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
-export function isAIUpscaleTask(task: Pick<GenerationTask, "type" | "model" | "operation">): boolean {
+export function isProtocolUpscaleTask(task: { inputJson?: string }): boolean {
+    try { return JSON.parse(task.inputJson || "{}").metadata?.source === "canvas-protocol-upscale"; } catch { return false; }
+}
+
+export function isAIUpscaleTask(task: Pick<GenerationTask, "type" | "model" | "operation"> & { inputJson?: string }): boolean {
+    if (isProtocolUpscaleTask(task)) return true;
     if (task.operation?.startsWith("media.upscale.")) return true;
     return (task.type === "canvas_image" && ["topaz-standard-v2", "topaz-wonder-3.5"].includes(task.model || "")) ||
         (task.type === "canvas_video" && ["topaz-proteus", "topaz-starlight-fast-2"].includes(task.model || ""));

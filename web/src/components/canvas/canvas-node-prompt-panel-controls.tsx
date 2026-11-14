@@ -38,6 +38,7 @@ export type CanvasNodeGenerationPanelPreview = {
     priceChannel: ModelChannel;
     costDisplay: InlineCostDisplay | null;
     currentModelCompatibilityError: string;
+    compatibleModel?: string;
     livePreflightError: string;
     isSubmitDisabled: boolean;
 };
@@ -78,6 +79,7 @@ export function useCanvasNodeGenerationPreview({
     const currentModelCompatibilityError = !simpleMode && availableModels.length && config.model
         ? modelCompatibilityError(config, config.model, { ...requirements, videoSeconds: undefined, imageSize: undefined, options: undefined })
         : "";
+    const compatibleModel = currentModelCompatibilityError ? availableModels.find(model => !modelCompatibilityError(config, model, { ...requirements, videoSeconds: undefined, imageSize: undefined, options: undefined })) : undefined;
     const priceChannel = resolveModelChannel(config, config.model);
     const costTarget = useMemo(
         () => canvasNodeCostTarget({
@@ -100,6 +102,7 @@ export function useCanvasNodeGenerationPreview({
         priceChannel,
         costDisplay,
         currentModelCompatibilityError,
+        compatibleModel,
         livePreflightError,
         isSubmitDisabled,
     };
@@ -114,6 +117,8 @@ export function CanvasNodePromptWarnings({
     theme,
     onOpenGenerationHistory,
     onCreateGenerationReplacement,
+    compatibleModel,
+    onSelectCompatibleModel,
 }: {
     config: AiConfig;
     currentModelCompatibilityError: string;
@@ -123,12 +128,15 @@ export function CanvasNodePromptWarnings({
     theme: CanvasTheme;
     onOpenGenerationHistory?: () => void;
     onCreateGenerationReplacement?: () => void;
+    compatibleModel?: string;
+    onSelectCompatibleModel?: () => void;
 }) {
     return (
         <>
             {currentModelCompatibilityError ? (
                 <p role="status" className="mx-2.5 my-2 whitespace-pre-wrap break-words text-[var(--fs-tiny)]" style={{ color: "var(--status-warning)" }}>
                     当前模型（{configuredModelDisplayName(config, config.model)}）{currentModelCompatibilityError}，请切换兼容模型或调整已连接的参考素材。
+                    {compatibleModel && onSelectCompatibleModel ? <Button size="small" type="text" onClick={onSelectCompatibleModel}>切换到 {configuredModelDisplayName(config, compatibleModel)}</Button> : null}
                 </p>
             ) : livePreflightError ? (
                 <p role="status" className="mx-2.5 my-2 whitespace-pre-wrap break-words text-[var(--fs-tiny)]" style={{ color: "var(--status-warning)" }}>

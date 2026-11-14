@@ -505,6 +505,8 @@ export function CanvasNodePromptPanel({ config: configProp, projectId, node, isR
                 />
                 <CanvasNodePromptWarnings
                     config={config}
+                    compatibleModel={preview.compatibleModel}
+                    onSelectCompatibleModel={preview.compatibleModel ? () => onConfigChange(node.id, { model: preview.compatibleModel, generationPreflightError: undefined }) : undefined}
                     currentModelCompatibilityError={currentModelCompatibilityError}
                     livePreflightError={livePreflightError}
                     persistedPreflightError={node.metadata?.generationPreflightError}

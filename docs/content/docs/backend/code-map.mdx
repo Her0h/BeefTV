@@ -8,6 +8,8 @@ BeefTV 是单用户、本地优先的桌面应用。项目、画布、素材和�
 
 ## 运行链路
 
+画布专用处理渠道通过 `web/src/services/api/protocol-upscale.ts` 将已有资源转换为普通持久生成任务，原图/视频处理协议与官方超分请求分别保留。`canvas-upscale` 批次冻结原资源、目标短边和操作 ID；结果走原任务取回与资源绑定，不直接从页面调用供应商，也不将官方费用估价套用到自带渠道。
+
 模型服务设置由 `web/src/pages/settings/model-service-editor.tsx` 管理添加和编辑草稿；`model-service-presets.ts` 依据内置接口填写初始配置，并把接口目录里的 `presets` 列成「更多服务商」。`model-connection-test.ts` 通过正常后端生成任务验证结果。`internal/workspace/provider_config.go` 持有配置版本、保存冲突和文件读写，`internal/localcrypto` 统一工作区凭据加解密格式。
 
 ```text
