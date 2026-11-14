@@ -11,6 +11,19 @@ import (
 	"infinite-canvas/backend/internal/runtimeinfo"
 )
 
+func TestWorkspaceWebViewProfilesAreIsolated(t *testing.T) {
+	first, second := newDesktopApp(t.TempDir()), newDesktopApp(t.TempDir())
+	a, b := desktopAppOptions(first), desktopAppOptions(second)
+	if a.Windows.WebviewUserDataPath == b.Windows.WebviewUserDataPath {
+		t.Fatal("separate workspaces share a WebView profile")
+	}
+	for _, app := range []*DesktopApp{first, second} {
+		if got := desktopAppOptions(app).Windows.WebviewUserDataPath; got != filepath.Join(app.dataDir, "webview2") {
+			t.Fatalf("WebView profile outside workspace: %q", got)
+		}
+	}
+}
+
 func TestSecondLaunchReachesWailsWhilePrimaryOwnsWorkspace(t *testing.T) {
 	for _, key := range []string{"TMPDIR", "TEMP", "TMP"} {
 		t.Setenv(key, os.Getenv(key))
