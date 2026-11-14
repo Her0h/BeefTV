@@ -351,6 +351,13 @@ export function taskOutcomeCopy(outcome?: TaskOutcome | null, nowMs = Date.now()
         };
     }
 
+    if (outcome.reason === "provider_cancel_confirmed") {
+        return { badge: "已取消", reason: "上游已确认取消", action: "重新生成将创建新任务，可能再次计费", message: "上游已确认取消。重新生成将创建新任务，可能再次计费。" };
+    }
+    if (outcome.reason === "provider_cancel_pending" || outcome.reason === "provider_cancel_uncertain") {
+        const reason = outcome.reason === "provider_cancel_pending" ? "正在等待上游确认取消" : "上游取消尚未确认";
+        return { badge: "取消待确认", reason, action: "确认前请勿重复生成", message: `${reason}。确认前请勿重复生成。` };
+    }
     if (outcome.reason === "settlement_pending" || outcome.reason === "billing_pending" || outcome.reason === "reconcile_pending") {
         const reason = formatReconcileDeadlineCopy(outcome.reconcileDeadline, nowMs);
         const action = "核对完成前请勿重新生成";

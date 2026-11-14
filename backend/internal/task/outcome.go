@@ -47,6 +47,16 @@ func ComputeOutcome(task model.Task, resultState string, facts OutcomeFacts) Out
 		}
 		return out("retrievable", "blocked", "delivery_pending")
 	}
+	if task.Status == model.TaskStatusCancelled {
+		switch task.ProviderCancelStatus {
+		case model.ProviderCancelStatusConfirmed:
+			return out("failed", "confirm", "provider_cancel_confirmed")
+		case model.ProviderCancelStatusRequested:
+			return out("failed", "blocked", "provider_cancel_pending")
+		case model.ProviderCancelStatusUncertain:
+			return out("failed", "blocked", "provider_cancel_uncertain")
+		}
+	}
 	if facts.Unreadable {
 		return out("retrievable", "blocked", "evidence_unavailable")
 	}

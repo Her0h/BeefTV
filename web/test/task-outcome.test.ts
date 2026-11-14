@@ -26,6 +26,20 @@ import {
 } from "@/lib/task-outcome";
 
 describe("task-outcome", () => {
+    it("shows confirmed upstream cancellation without promising a refund", () => {
+        const outcome: TaskOutcome = { phase: "failed", regenerate: "confirm", reason: "provider_cancel_confirmed" };
+        expect(taskOutcomeCopy(outcome).badge).toBe("已取消");
+        expect(taskOutcomeCopy(outcome).message).toContain("可能再次计费");
+        expect(isTaskOutcomeWorking(outcome)).toBe(false);
+    });
+    it("does not describe an unconfirmed cancellation as result delivery", () => {
+        for (const reason of ["provider_cancel_pending", "provider_cancel_uncertain"]) {
+            const outcome: TaskOutcome = { phase: "failed", regenerate: "blocked", reason };
+            expect(taskOutcomeCopy(outcome).badge).toBe("取消待确认");
+            expect(taskOutcomeCopy(outcome).message).not.toContain("取回");
+            expect(isRegenerateBlocked(outcome)).toBe(true);
+        }
+    });
     it("recognizes all 5 phase values and 3 regenerate values", () => {
         const phases: TaskOutcomePhase[] = ["running", "fetching", "ready", "retrievable", "failed"];
         const regenerates: TaskOutcomeRegenerate[] = ["allowed", "confirm", "blocked"];

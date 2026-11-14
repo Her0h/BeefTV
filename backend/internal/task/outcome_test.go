@@ -33,6 +33,21 @@ func TestComputeOutcome(t *testing.T) {
 		{"下载暂时失败", with(func(t *model.Task) { t.Status = model.TaskStatusSucceeded }), ResultStateFailedRetryable, OutcomeFacts{}, want("retrievable", "blocked", "delivery_pending")},
 		{"入库确定失败", with(func(t *model.Task) { t.Status = model.TaskStatusSucceeded }), ResultStateFailedPermanent, OutcomeFacts{}, want("failed", "confirm", "result_unrecoverable")},
 		{"尚未派发", failed, "", OutcomeFacts{DispatchState: "not_sent"}, want("failed", "allowed", "task_failed")},
+		{"上游确认取消不再取回", with(func(t *model.Task) {
+			t.Status = model.TaskStatusCancelled
+			t.ProviderRequestID = "cancelled-upstream"
+			t.ProviderCancelStatus = model.ProviderCancelStatusConfirmed
+		}), "", OutcomeFacts{Unreadable: true}, want("failed", "confirm", "provider_cancel_confirmed")},
+		{"等待取消确认不冒充取回", with(func(t *model.Task) {
+			t.Status = model.TaskStatusCancelled
+			t.ProviderRequestID = "cancel-pending"
+			t.ProviderCancelStatus = model.ProviderCancelStatusRequested
+		}), "", OutcomeFacts{}, want("failed", "blocked", "provider_cancel_pending")},
+		{"取消未确认不冒充取回", with(func(t *model.Task) {
+			t.Status = model.TaskStatusCancelled
+			t.ProviderRequestID = "cancel-uncertain"
+			t.ProviderCancelStatus = model.ProviderCancelStatusUncertain
+		}), "", OutcomeFacts{}, want("failed", "blocked", "provider_cancel_uncertain")},
 		{"本地准备失败", failed, "", OutcomeFacts{RequestNotSent: true}, want("failed", "allowed", "task_failed")},
 		{"阶段文字不参与判断", with(func(t *model.Task) { t.Stage = "请求尚未提交" }), "", OutcomeFacts{}, want("failed", "confirm", "task_failed")},
 		{"未发出但上游已有任务号", with(func(t *model.Task) { t.ProviderRequestID = "upstream" }), "", OutcomeFacts{RequestNotSent: true}, want("retrievable", "blocked", "provider_result_pending")},
