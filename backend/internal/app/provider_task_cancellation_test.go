@@ -6,7 +6,66 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"infinite-canvas/backend/internal/generation"
+	"infinite-canvas/backend/internal/model"
+	"infinite-canvas/backend/internal/platform"
 )
+
+func TestInstalledProtocolCancellationUsesWorkspaceRegistry(t *testing.T) {
+	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "127.0.0.1")
+	posts, polls := 0, 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer test-key" {
+			t.Error("missing workspace channel authentication")
+		}
+		switch {
+		case r.Method == "POST" && r.URL.Path == "/v1/tasks/ours/cancel":
+			posts++
+		case r.Method == "GET" && r.URL.Path == "/v1/tasks/ours":
+			polls++
+		default:
+			t.Errorf("unexpected cancellation request: %s %s", r.Method, r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"id":"ours","status":"cancelled"}`))
+	}))
+	defer server.Close()
+	svc, db := newChannelModelTestService(t)
+	svc.coordinator = platform.NewLocalCoordinator()
+	sqlDB, _ := db.DB()
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	if err := db.AutoMigrate(&model.RouteAttempt{}, &model.ImageSubmission{}, &model.TaskLog{}, &model.SystemSetting{}, &model.ApiCallLog{}, &model.Result{}, &model.TaskTextDelta{}); err != nil {
+		t.Fatal(err)
+	}
+	center, err := newPluginRuntime(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := []byte(`{"apiVersion":"beeftv.plugin/v2","id":"cancel-fixture","version":"1.0.0","name":"Cancel fixture","author":"Test","documentation":"# Cancel fixture","contributes":{"providers":[{"id":"cancel-fixture","label":"Cancel fixture","capabilities":["video"],"scopes":["canvas"],"auth":{"type":"bearer","field":"apiKey"},"create":{"method":"POST","path":"/tasks"},"poll":{"method":"GET","path":"/tasks/{{taskId}}"},"cancel":{"method":"POST","path":"/tasks/{{taskId}}/cancel"},"response":{"taskIdPaths":["id"],"statusPaths":["status"]}}]}}`)
+	if _, err := center.install(testPluginPackage(t, manifest), "cancel-fixture.beeftv-plugin"); err != nil {
+		t.Fatal(err)
+	}
+	svc.pluginRuntime = center
+	input, _ := json.Marshal(generation.Input{Mode: "video", Config: generation.Config{InterfaceType: "cancel-fixture", BaseURL: server.URL, Model: "fixture-video", APIKey: "test-key"}})
+	task := model.Task{ID: "installed-cancel", UserID: "user-1", Type: "canvas_video", Status: model.TaskStatusCancelled, ProviderRequestID: "ours", InputJSON: string(input)}
+	if err := db.Create(&task).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.requestProviderCancellation(context.Background(), &task); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := svc.repo.TaskForUser(task.UserID, task.ID)
+	if err != nil || stored.ProviderCancelStatus != model.ProviderCancelStatusRequested || posts != 1 {
+		t.Fatalf("workspace cancellation was not sent: task=%+v posts=%d err=%v", stored, posts, err)
+	}
+	if err := svc.reconcileProviderCancellation(context.Background(), stored); err != nil {
+		t.Fatal(err)
+	}
+	stored, err = svc.repo.TaskForUser(task.UserID, task.ID)
+	if err != nil || stored.ProviderCancelStatus != model.ProviderCancelStatusConfirmed || polls != 1 {
+		t.Fatalf("workspace cancellation was not confirmed: task=%+v polls=%d err=%v", stored, polls, err)
+	}
+}
 
 func TestGeminiProviderCancellationAndConfirmation(t *testing.T) {
 	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "127.0.0.1")
