@@ -100,3 +100,18 @@ test("desktop bootstrap rejects an empty early binding result and uses the asset
     expect(await bootstrapDesktopRuntime()).toBe(true);
     expect(apiBaseURL).toBe("http://127.0.0.1:43126/api");
 });
+
+test("Windows Wails bootstrap restores the backend before a fresh profile has bindings", async () => {
+    Object.assign(globalThis, { window: { location: { protocol: "http:", hostname: "wails.localhost" } } });
+    let path: unknown;
+    globalThis.fetch = (async (input: unknown) => {
+        path = input;
+        return new Response(JSON.stringify({ baseURL: "http://127.0.0.1:43127/api", launchToken: "windows-token", uiBootstrapToken: "windows-ui-token" }), {
+            status: 200, headers: { "Content-Type": "application/json" },
+        });
+    }) as typeof fetch;
+    expect(await bootstrapDesktopRuntime()).toBe(true);
+    expect(path).toBe("/__desktop/runtime-config");
+    expect(apiBaseURL).toBe("http://127.0.0.1:43127/api");
+    expect(apiClient.defaults.headers.common["X-Beeftv-UI-Bootstrap"]).toBe("windows-ui-token");
+});
