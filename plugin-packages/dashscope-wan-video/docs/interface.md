@@ -18,6 +18,8 @@
 
 ## 统一字段映射
 
+图生视频的分辨率通过 `parameters.resolution` 发送，并转换为 `720P` / `1080P` 等大写值。仅发送旧 `size` 字段不能保证图生视频遵守所选分辨率。
+
 | 统一字段 | 类型 | 必填 | 上游映射 | 说明 |
 | --- | --- | --- | --- | --- |
 | `model` | string | 是 | `model` | 视频模型 ID。 |
@@ -105,7 +107,7 @@
   "apiVersion": "beeftv.plugin/v2",
   "id": "dashscope-wan-video",
   "name": "DashScope Wan Video",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "author": "BeefTV Contributors",
   "description": "DashScope Wan Video 独立请求协议插件。",
   "documentation": "<当前插件的完整 documentation，由 README.md 与 docs/interface.md 拼接而成；为避免 JSON 递归，此处不重复展开正文。>",
@@ -690,6 +692,13 @@
               }
             },
             "parameters": {
+              "resolution": {
+                "$omitEmpty": {
+                  "$upper": {
+                    "$ref": "request.resolution"
+                  }
+                }
+              },
               "size": {
                 "$omitEmpty": {
                   "$ref": "request.resolution"
