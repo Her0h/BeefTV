@@ -19,7 +19,7 @@ type styleExecutionPlanDocument = generation.StyleExecutionPlanDocument
 func withProviderAnalytics(ctx context.Context, service *Service, task model.Task) context.Context {
 	metadata := generation.TaskAnalyticsContext(task)
 	ctx = context.WithValue(ctx, providerAnalyticsKey{}, metadata)
-	return service.bindGenerationRuntime(ctx, metadata)
+	return withProtocolRegistry(service.bindGenerationRuntime(ctx, metadata), service.protocolRegistry())
 }
 
 func resumedProviderRequestID(ctx context.Context) string {
